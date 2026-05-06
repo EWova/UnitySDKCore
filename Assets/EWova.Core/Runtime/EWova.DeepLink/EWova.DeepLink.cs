@@ -1,3 +1,4 @@
+using EWova.DeepLink;
 using EWova.NetService;
 
 using UnityEngine;
@@ -25,19 +26,22 @@ namespace EWova
         {
             var path = EWovaUriPath.Parse(DeepLinkScheme);
 
-            if ((include & DeepLinkQueryInclude.LoginToken) != 0)
+            if ((include & DeepLinkQueryInclude.LoginToken) != 0
+                && DeepLinkHandler.Default.Query.TryGetValue(EWovaUriPath.Query.Token.Key, out var token))
             {
-                path.AddOrSetQueue(EWovaUriPath.Query.Token);
+                path.AddOrSetQueue(EWovaUriPath.Query.Token, token);
             }
 
-            if ((include & DeepLinkQueryInclude.WorldID) != 0)
+            if ((include & DeepLinkQueryInclude.WorldID) != 0
+                    && DeepLinkHandler.Default.Query.TryGetValue(EWovaUriPath.Query.WorldID.Key, out var worldID))
             {
-                path.AddOrSetQueue(EWovaUriPath.Query.WorldID);
+                path.AddOrSetQueue(EWovaUriPath.Query.WorldID, worldID);
             }
 
-            if ((include & DeepLinkQueryInclude.SpaceID) != 0)
+            if ((include & DeepLinkQueryInclude.SpaceID) != 0
+                    && DeepLinkHandler.Default.Query.TryGetValue(EWovaUriPath.Query.SpaceID.Key, out var spaceID))
             {
-                path.AddOrSetQueue(EWovaUriPath.Query.SpaceID);
+                path.AddOrSetQueue(EWovaUriPath.Query.SpaceID, spaceID);
             }
 
             return path.GetResult().ToString();
