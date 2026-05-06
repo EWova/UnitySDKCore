@@ -2,7 +2,7 @@
     "name": "EWova.DeepLink.Editor",
     "rootNamespace": "",
     "references": [
-        "GUID:e7c6cab5c25d6b84e93f054c0b82137d"
+        "GUID:0b34836ace6cdc74d8185cadaf082ad5"
     ],
     "includePlatforms": [
         "Editor"

@@ -21,7 +21,7 @@ namespace EWova.DeepLink.Editor
             string manifestPath = Path.Combine(path, "src", "main", "AndroidManifest.xml");
             if (!File.Exists(manifestPath))
             {
-                Debug.LogError("AndroidManifest.xml not found: " + manifestPath);
+                UnityEngine.Debug.LogError("AndroidManifest.xml not found: " + manifestPath);
                 return;
             }
 
@@ -35,14 +35,14 @@ namespace EWova.DeepLink.Editor
 
             doc.Save(manifestPath);
 
-            Debug.Log($"已完成將你的 DeepLink {config.MyAppScheme}:// 加入到 AndroidManifest.xml");
+            UnityEngine.Debug.Log($"已完成將你的 DeepLink {config.MyAppScheme}:// 加入到 AndroidManifest.xml");
         }
 
         public static void AddDeepLinkScheme(XmlDocument doc, string scheme)
         {
             if (string.IsNullOrWhiteSpace(scheme))
             {
-                Debug.LogError("DeepLink scheme cannot be null or empty.");
+                UnityEngine.Debug.LogError("DeepLink scheme cannot be null or empty.");
                 return;
             }
 

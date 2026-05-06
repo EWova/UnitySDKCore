@@ -80,7 +80,7 @@ namespace EWova.DeepLink.Editor
 
             PlayerSettings.SetPreloadedAssets(list.ToArray());
 
-            Debug.Log("Config 已加入 Preloaded Assets");
+            UnityEngine.Debug.Log("Config 已加入 Preloaded Assets");
         }
 
         public static Config FindConfig()

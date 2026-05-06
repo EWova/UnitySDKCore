@@ -7,7 +7,7 @@ using System.IO;
 
 using System.Text;
 
-namespace EWova.NetService
+namespace EWova
 {
     //https://github.com/mono/mono/blob/main/mcs/class/System.Web/System.Web/HttpUtility.cs
     public sealed class HttpUtility

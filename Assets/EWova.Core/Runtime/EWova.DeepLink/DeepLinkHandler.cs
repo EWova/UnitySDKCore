@@ -5,9 +5,6 @@
 using Assets.DeepLinkingForWindows;
 #endif
 #endif
-
-using EWova.NetService;
-
 using System;
 using System.Collections.Generic;
 
