@@ -1,7 +1,7 @@
 //#define ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
 using Assets.DeepLinkingForWindows;
 #endif
 #endif
@@ -69,7 +69,7 @@ namespace EWova.DeepLink
         {
             this.Scheme = scheme;
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
             WindowsDeepLinking.Initialize(scheme);
             WindowsDeepLinking.DeepLinkActivated += OnDeepLinkActivated;
 #endif
@@ -81,7 +81,7 @@ namespace EWova.DeepLink
         ~DeepLinkHandler()
         {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
             WindowsDeepLinking.DeepLinkActivated -= OnDeepLinkActivated;
 #endif
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
@@ -116,7 +116,7 @@ namespace EWova.DeepLink
             get
             {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
                 return true;
 #else
                 return false;
