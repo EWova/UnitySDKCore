@@ -24,6 +24,11 @@ namespace EWova
 
         public static string GetDeepLink(DeepLinkQueryInclude include)
         {
+            if(DeepLinkHandler.Default.Query.Count == 0)
+            {
+                return GetDeepLink();
+            }
+
             var path = EWovaUriPath.Parse(DeepLinkScheme);
 
             if ((include & DeepLinkQueryInclude.LoginToken) != 0

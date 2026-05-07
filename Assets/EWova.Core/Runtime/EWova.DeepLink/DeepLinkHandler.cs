@@ -25,14 +25,15 @@ namespace EWova.DeepLink
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void AfterAssembliesLoaded()
         {
-            var config = Config.LoadOrDefault();
-
-            if (config == null)
-                return;
-
             s_schemeNamePool = new(StringComparer.FromComparison(SchemeStringComparison)); // editor 跳過 reload domain 不會自動釋放 static 變數
-            Default = Registry(config.MyAppScheme);
+            var config = Config.LoadOrDefault();
+            if (config != null)
+                Default = Registry(config.MyAppScheme);
+            else
+                Default = Dummy;
         }
+
+        public readonly static DeepLinkHandler Dummy = new DeepLinkHandler(null);
 
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
@@ -51,14 +52,25 @@ namespace EWova.DeepLink
         /// </summary>
         public static DeepLinkHandler Default { get; private set; }
         public IReadOnlyDictionary<string, string> Query => m_query;
+        /// <summary>
+        /// 當前被 DeepLink 啟動的 URL，當 DeepLinkHandler 被啟動後會將 URL 以字串形式保存在此屬性中，若尚未被啟動則為空字串
+        /// </summary>
         public string ActiveURL { get; private set; } = string.Empty;
+        /// <summary>
+        /// 是否為 Dummy Handler，Dummy Handler 不會處理任何 DeepLink 事件，且不會觸發 ContinueWith 的 callback
+        /// </summary>
+        public bool IsDummy => this == Dummy;
         private bool IsActivated => !string.IsNullOrEmpty(ActiveURL);
+        /// <summary>
+        /// 當前 DeepLink Handler 處理的 Scheme，當 DeepLinkHandler 被啟動後會將 URL 以字串形式保存在此屬性中，若尚未被啟動則為空字串
+        /// </summary>
         public string Scheme { get; private set; }
         public DateTime LastedUpdate { get; private set; }
 
         private readonly Dictionary<string, string> m_query = new();
         private static Dictionary<string, DeepLinkHandler> s_schemeNamePool;
         private Action<DeepLinkHandler> m_onActivated;
+        private bool m_isEventActive;
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 
@@ -68,6 +80,10 @@ namespace EWova.DeepLink
         private DeepLinkHandler(string scheme)
         {
             this.Scheme = scheme;
+
+            if (scheme == null)
+                return;
+
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 #if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
             WindowsDeepLinking.Initialize(scheme);
@@ -77,9 +93,15 @@ namespace EWova.DeepLink
             UnityEngine.Application.deepLinkActivated += OnDeepLinkActivated;
             s_androidDeepLinkActivatedAfterSceneLoad += OnDeepLinkActivated;
 #endif
+            m_isEventActive = true;
         }
         ~DeepLinkHandler()
         {
+            m_onActivated = null;
+
+            if (!m_isEventActive)
+                return;
+
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
 #if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
             WindowsDeepLinking.DeepLinkActivated -= OnDeepLinkActivated;
@@ -88,7 +110,6 @@ namespace EWova.DeepLink
             UnityEngine.Application.deepLinkActivated -= OnDeepLinkActivated;
             s_androidDeepLinkActivatedAfterSceneLoad -= OnDeepLinkActivated;
 #endif
-            m_onActivated = null;
         }
 
         public static DeepLinkHandler Registry(string scheme)
@@ -96,10 +117,10 @@ namespace EWova.DeepLink
             if (string.IsNullOrEmpty(scheme))
                 throw new ArgumentNullException(nameof(scheme), "Scheme cannot be null or empty.");
 
-            if (!IsCurrentPlatformSupport)
+            if (!IsCurrentPlatformSupport || string.IsNullOrEmpty(scheme))
             {
-                //Debug.LogWarning("Current platform not support deep link.");
-                return null;
+                Debug.LogWarning($"Current platform does not support deep linking. Scheme '{scheme}' will not be registered.");
+                return DeepLinkHandler.Dummy;
             }
 
             Debug.Log($"Registry deep link scheme: {scheme}");
