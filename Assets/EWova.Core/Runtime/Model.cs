@@ -25,6 +25,11 @@ namespace EWova.NetService.Model
         public string UserCultureInfo;
         public string AppLanguage;
         public string Flags;
+
+        public override string ToString()
+        {
+            return $"id: {id}, guid: {guid}, name: {name}, nickname: {nickname}, auth_Group: {auth_Group}, schoolGuid: {schoolGuid}, UserCultureInfo: {UserCultureInfo}, AppLanguage: {AppLanguage}, Flags: {Flags}";
+        }
     }
     public class OrganizationProfile
     {

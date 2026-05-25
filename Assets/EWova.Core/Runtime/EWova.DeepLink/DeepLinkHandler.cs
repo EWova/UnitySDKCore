@@ -17,16 +17,16 @@ namespace EWova.DeepLink
         // 目前使用 Case-insensitive 來比較 Scheme，強烈建議將所有 Scheme 都使用小寫字母
         private const StringComparison SchemeStringComparison = StringComparison.OrdinalIgnoreCase;
 
-        public static Debug Debug = new("DeepLink", Debug.Level.Full);
+        public static Logger Debug = new("DeepLink", Logger.Level.Full);
         public void Log(object msg) => Debug.Log($"[{Scheme}://] {msg}");
-        public void LogWarning(object msg) => Debug.LogWarning($"[{Scheme}://] {msg}");
-        public void LogError(object msg) => Debug.LogError($"[{Scheme}://] {msg}");
+        public void LogWarning(object msg) => Debug.Warn($"[{Scheme}://] {msg}");
+        public void LogError(object msg) => Debug.Err($"[{Scheme}://] {msg}");
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void AfterAssembliesLoaded()
         {
             s_schemeNamePool = new(StringComparer.FromComparison(SchemeStringComparison)); // editor 跳過 reload domain 不會自動釋放 static 變數
-            var config = Config.LoadOrDefault();
+            var config = EWovaSDKConfig.LoadOrDefault();
             if (config != null)
                 Default = Registry(config.MyAppScheme);
             else
@@ -119,7 +119,7 @@ namespace EWova.DeepLink
 
             if (!IsCurrentPlatformSupport || string.IsNullOrEmpty(scheme))
             {
-                Debug.LogWarning($"Current platform does not support deep linking. Scheme '{scheme}' will not be registered.");
+                Debug.Warn($"Current platform does not support deep linking. Scheme '{scheme}' will not be registered.");
                 return DeepLinkHandler.Dummy;
             }
 

@@ -1,0 +1,17 @@
+{
+    "name": "EWova.Tests",
+    "rootNamespace": "",
+    "references": [
+        "GUID:0b34836ace6cdc74d8185cadaf082ad5",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

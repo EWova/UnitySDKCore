@@ -5,11 +5,12 @@ using UnityEngine;
 namespace EWova
 {
 #if !UNITY_6000_0_OR_NEWER
+    // Unity 6.0.0 以後才有 HideInCallstackAttribute，為了兼容舊版本，這裡定義一個空的同名屬性
     [System.Diagnostics.Conditional("UNITY_EDTIOR")]
     public sealed class HideInCallstackAttribute : Attribute {}
 #endif
     [Serializable]
-    public class Debug
+    public class Logger
     {
         [Flags]
         public enum Level
@@ -24,7 +25,7 @@ namespace EWova
         public Level PrintLevel;
         [NonSerialized] public string Prefix = "";
 
-        public Debug(string prefix = "", Level printLevel = Level.Warn | Level.Error)
+        public Logger(string prefix = "", Level printLevel = Level.Warn | Level.Error)
         {
             Prefix = prefix;
             PrintLevel = printLevel;
@@ -37,25 +38,24 @@ namespace EWova
                 UnityEngine.Debug.Log(Prefix + msg);
         }
         [HideInCallstack]
-        public void LogWarning(object msg)
+        public void Warn(object msg)
         {
             if (PrintLevel.HasFlag(Level.Warn))
                 UnityEngine.Debug.LogWarning(Prefix + msg);
         }
         [HideInCallstack]
-        public void LogError(object msg)
+        public void Err(object msg)
         {
             if (PrintLevel.HasFlag(Level.Error))
                 UnityEngine.Debug.LogError(Prefix + msg);
         }
         [HideInCallstack]
-        public void LogException(Exception exception, object msg = null)
+        public void Exce(object msg, Exception ex)
         {
-            if (exception != null)
-            {
-                UnityEngine.Debug.LogError($"{Prefix} {msg} {exception.GetType().Name}:{exception.Message}");
-                UnityEngine.Debug.LogException(exception);
-            }
+            if (PrintLevel.HasFlag(Level.Error))
+                UnityEngine.Debug.LogError(Prefix + msg);
+
+            UnityEngine.Debug.LogException(ex);
         }
     }
 }

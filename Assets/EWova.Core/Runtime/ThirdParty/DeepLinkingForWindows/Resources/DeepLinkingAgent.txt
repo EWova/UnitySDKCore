@@ -1,0 +1,42 @@
+@if (1==1) @if(1==0) @ELSE
+@echo off
+cscript //E:JScript //nologo "%~f0" %*
+@goto :EOF
+@end @ELSE
+
+if (WScript.Arguments.Length != 1)
+{
+	WScript.Echo("URI argument expected.");
+	WScript.Quit(1);
+}
+
+var uri = WScript.Arguments.Item(0);
+var wsh = new ActiveXObject("WScript.Shell");
+
+wsh.RegWrite("HKEY_CURRENT_USER\\SOFTWARE\\Classes\\{0}\\{1}", uri, "REG_SZ");
+
+var appPath = "{2}";
+var uri = WScript.Arguments.Item(0);
+var wmi = GetObject("winmgmts:{impersonationLevel=impersonate}!\\\\.\\root\\cimv2");
+var list = wmi.ExecQuery("Select * from Win32_Process");
+var processId = 0;
+
+for (var e = new Enumerator(list); !e.atEnd(); e.moveNext())
+{
+	var process = e.item()
+	//WScript.Echo(process.ProcessID + ":" + process.ExecutablePath);
+	
+	if (process.ExecutablePath == appPath)
+	{
+		wsh.AppActivate(process.ProcessID);
+		WScript.Echo("Process found and activated: " + process.ProcessID);
+		WScript.Quit();
+	}
+}
+
+var command = "\"" + appPath + "\"" + " " + uri;
+
+wsh.run(command);
+WScript.Echo("Application started: " + command);
+
+@end

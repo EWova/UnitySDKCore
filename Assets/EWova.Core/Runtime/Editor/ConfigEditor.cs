@@ -4,12 +4,12 @@ using UnityEngine;
 
 namespace EWova.DeepLink.Editor
 {
-    [CustomEditor(typeof(Config))]
+    [CustomEditor(typeof(EWovaSDKConfig))]
     public class ConfigEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
-            var config = (Config)target;
+            var config = (EWovaSDKConfig)target;
 
             EditorGUILayout.Space();
 

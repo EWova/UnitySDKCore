@@ -1,17 +1,17 @@
 using UnityEngine;
 using UnityEditor;
 using System.IO;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace EWova.DeepLink.Editor
 {
-    public class CreateDeeplinkConfigEditor
+    public class CreateConfigEditor
     {
-        private const string ResourceFolderPath = "Assets/Resources";
-        private const string AssetPath = "Assets/Resources/DeeplinkConfig.asset";
+        internal const string ResourceFolderPath = "Assets/Resources";
+        internal const string AssetPath = "Assets/Resources/" + EWovaSDKConfig.ResourceName + ".asset";
+        internal const string MenuPath = "EWova/SDK/Create Config";
 
-        [MenuItem("EWova/Deeplink/Create Config")]
+        [MenuItem(MenuPath)]
         public static void CreateConfig()
         {
             // Ensure Resources folder exists
@@ -22,7 +22,7 @@ namespace EWova.DeepLink.Editor
             }
 
             // Create asset
-            Config config = ScriptableObject.CreateInstance<Config>();
+            EWovaSDKConfig config = ScriptableObject.CreateInstance<EWovaSDKConfig>();
             AssetDatabase.CreateAsset(config, AssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -34,10 +34,10 @@ namespace EWova.DeepLink.Editor
         }
 
         // 控制 Menu 是否可點擊
-        [MenuItem("EWova/Deeplink/Create Config", true)]
+        [MenuItem(MenuPath, true)]
         public static bool ValidateCreateConfig()
         {
-            return ConfigUtility.FindConfig() == null;
+            return EWovaSDKConfig.LoadOrDefault() == null;
         }
     }
 
@@ -54,7 +54,7 @@ namespace EWova.DeepLink.Editor
             if (BuildPipeline.isBuildingPlayer)
                 return;
 
-            var config = ConfigUtility.FindConfig();
+            var config = EWovaSDKConfig.LoadOrDefault();
             if (config == null)
                 return;
 
@@ -64,7 +64,7 @@ namespace EWova.DeepLink.Editor
 
     internal static class ConfigUtility
     {
-        public static void EnsurePreloaded(Config config)
+        public static void EnsurePreloaded(EWovaSDKConfig config)
         {
             var preloadedAssets = PlayerSettings.GetPreloadedAssets();
             var list = preloadedAssets.ToList();
@@ -74,18 +74,13 @@ namespace EWova.DeepLink.Editor
                 return;
 
             // 移除舊的 Config
-            list.RemoveAll(a => a is Config);
+            list.RemoveAll(a => a is EWovaSDKConfig);
 
             list.Add(config);
 
             PlayerSettings.SetPreloadedAssets(list.ToArray());
 
-            UnityEngine.Debug.Log("Config 已加入 Preloaded Assets");
-        }
-
-        public static Config FindConfig()
-        {
-            return Resources.Load<Config>("DeeplinkConfig");
+            UnityEngine.Debug.Log("EWovaSDKConfig 已加入 Preloaded Assets");
         }
     }
 }

@@ -13,7 +13,7 @@ namespace EWova.DeepLink.Editor
 
         public void OnPostGenerateGradleAndroidProject(string path)
         {
-            var config = Config.LoadOrDefault();
+            var config = EWovaSDKConfig.LoadOrDefault();
 
             if (config == null)
                 return;
