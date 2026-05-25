@@ -8,7 +8,7 @@ namespace EWova.DeepLink.Editor
     public class CreateConfigEditor
     {
         internal const string ResourceFolderPath = "Assets/Resources";
-        internal const string AssetPath = "Assets/Resources/" + EWovaSDKConfig.ResourceName + ".asset";
+        internal const string AssetPath = "Assets/Resources/" + DeepLinkConfig.ResourceName + ".asset";
         internal const string MenuPath = "EWova/SDK/Create Config";
 
         [MenuItem(MenuPath)]
@@ -22,7 +22,7 @@ namespace EWova.DeepLink.Editor
             }
 
             // Create asset
-            EWovaSDKConfig config = ScriptableObject.CreateInstance<EWovaSDKConfig>();
+            DeepLinkConfig config = ScriptableObject.CreateInstance<DeepLinkConfig>();
             AssetDatabase.CreateAsset(config, AssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -37,7 +37,7 @@ namespace EWova.DeepLink.Editor
         [MenuItem(MenuPath, true)]
         public static bool ValidateCreateConfig()
         {
-            return EWovaSDKConfig.LoadOrDefault() == null;
+            return DeepLinkConfig.LoadOrDefault() == null;
         }
     }
 
@@ -54,7 +54,7 @@ namespace EWova.DeepLink.Editor
             if (BuildPipeline.isBuildingPlayer)
                 return;
 
-            var config = EWovaSDKConfig.LoadOrDefault();
+            var config = DeepLinkConfig.LoadOrDefault();
             if (config == null)
                 return;
 
@@ -64,7 +64,7 @@ namespace EWova.DeepLink.Editor
 
     internal static class ConfigUtility
     {
-        public static void EnsurePreloaded(EWovaSDKConfig config)
+        public static void EnsurePreloaded(DeepLinkConfig config)
         {
             var preloadedAssets = PlayerSettings.GetPreloadedAssets();
             var list = preloadedAssets.ToList();
@@ -74,7 +74,7 @@ namespace EWova.DeepLink.Editor
                 return;
 
             // 移除舊的 Config
-            list.RemoveAll(a => a is EWovaSDKConfig);
+            list.RemoveAll(a => a is DeepLinkConfig);
 
             list.Add(config);
 

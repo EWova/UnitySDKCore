@@ -9,7 +9,7 @@ namespace EWova.Auth
         {
             string _appScheme;
 
-            var dlConfig = DeepLink.EWovaSDKConfig.LoadOrDefault();
+            var dlConfig = DeepLink.DeepLinkConfig.LoadOrDefault();
             if (dlConfig != null)
             {
                 Logger.Log($"成功載入 DeepLink.Config，App Scheme 設定為：{dlConfig.MyAppScheme}");

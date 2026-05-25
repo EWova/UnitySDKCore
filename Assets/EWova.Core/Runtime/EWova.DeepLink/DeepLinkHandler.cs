@@ -26,7 +26,7 @@ namespace EWova.DeepLink
         private static void AfterAssembliesLoaded()
         {
             s_schemeNamePool = new(StringComparer.FromComparison(SchemeStringComparison)); // editor 跳過 reload domain 不會自動釋放 static 變數
-            var config = EWovaSDKConfig.LoadOrDefault();
+            var config = DeepLinkConfig.LoadOrDefault();
             if (config != null)
                 Default = Registry(config.MyAppScheme);
             else
