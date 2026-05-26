@@ -1,7 +1,7 @@
-
 using Cysharp.Threading.Tasks;
-
 using Proyecto26;
+
+using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -12,162 +12,104 @@ namespace EWova.NetService
 {
     public partial class AuthenticatedApiClient
     {
-        internal Dictionary<string, string> AuthHeader
+        internal Dictionary<string, string> AuthHeader =>
+            IsUserAuthenticated
+                ? new() { ["Authorization"] = $"Bearer {AccessToken}" }
+                : null;
+
+        public UniTask<string> Get(string endpoint, CancellationToken ct = default) =>
+            Send(endpoint, "GET", cancellationToken: ct);
+
+        public UniTask<T> Get<T>(string endpoint, CancellationToken ct = default) =>
+            Send<T>(endpoint, "GET", cancellationToken: ct);
+
+        public UniTask<string> Post(string endpoint, object body, CancellationToken ct = default) =>
+            Send(endpoint, "POST", body, ct);
+
+        public UniTask<T> Post<T>(string endpoint, object body, CancellationToken ct = default) =>
+            Send<T>(endpoint, "POST", body, ct);
+
+        public UniTask<string> Put(string endpoint, object body, CancellationToken ct = default) =>
+            Send(endpoint, "PUT", body, ct);
+
+        public UniTask<T> Put<T>(string endpoint, object body, CancellationToken ct = default) =>
+            Send<T>(endpoint, "PUT", body, ct);
+
+        public UniTask<string> Delete(string endpoint, CancellationToken ct = default) =>
+            Send(endpoint, "DELETE", cancellationToken: ct);
+
+        public UniTask<T> Delete<T>(string endpoint, CancellationToken ct = default) =>
+            Send<T>(endpoint, "DELETE", cancellationToken: ct);
+
+        private async UniTask<string> Send(
+            string endpoint,
+            string method,
+            object body = null,
+            CancellationToken cancellationToken = default)
         {
-            get
-            {
-                if (!IsUserAuthenticated)
-                    return null;
+            var req = CreateRequest(endpoint, method, body);
 
-                return new() { ["Authorization"] = $"Bearer {AccessToken}" };
-            }
-        }
+            _logger.Log($"[{method}] (/{endpoint}) Request");
 
-        public async UniTask<string> Get(string endpoint, CancellationToken cancellationToken = default)
-        {
-            var req = new RequestHelper
-            {
-                Uri = Path.Combine(_baseUrl, endpoint),
-                Headers = AuthHeader,
-                Method = "GET",
-            };
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
-
-            ResponseHelper rsp;
             try
             {
-                rsp = await RestClient.Request(req).AsUniTask(cancellationToken);
+                var rsp = await RestClient.Request(req).AsUniTask(cancellationToken);
+
+                _logger.Log($"[{method}] (/{endpoint}) Response:{rsp.Text}");
+
+                return rsp.Text;
             }
             catch (Exception ex)
             {
-                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
+                _logger.Exce($"[{method}] (/{endpoint}) Exception:{ex}", ex);
                 return null;
             }
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content:{rsp.Text}");
-            return rsp.Text;
         }
-        public async UniTask<T> Get<T>(string endpoint, CancellationToken cancellationToken = default)
+
+        private async UniTask<T> Send<T>(
+            string endpoint,
+            string method,
+            object body = null,
+            CancellationToken cancellationToken = default)
         {
-            var req = new RequestHelper
+            var text = await Send(endpoint, method, body, cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(text))
             {
-                Uri = Path.Combine(_baseUrl, endpoint),
-                Headers = AuthHeader,
-                Method = "GET",
-            };
+                _logger.Warn($"[{method}] (/{endpoint}) Empty Response");
+                return default;
+            }
 
-            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
-
-            ResponseHelper rsp;
             try
             {
-                rsp = await RestClient.Request(req).AsUniTask(cancellationToken);
+                var result = JsonConvert.DeserializeObject<T>(text);
+
+                _logger.Log($"[{method}] (/{endpoint}) Response({typeof(T)}):{text}");
+
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
-                return default(T);
-            }
+                _logger.Exce(
+                    $"[{method}] (/{endpoint}) Deserialize<{typeof(T).Name}> Exception:{ex}",
+                    ex);
 
-            T typed;
-            if (!string.IsNullOrWhiteSpace(rsp.Text))
-            {
-                try
-                {
-                    typed = DeserializeObject<T>(rsp.Text);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Exce($"[{req.Method}] (/{endpoint}) DeserializeObject({typeof(T)}) Exception:{ex}", ex);
-                    return default(T);
-                }
+                return default;
             }
-            else
-            {
-                _logger.Warn($"[{req.Method}] (/{endpoint}) Empty Response");
-                return default(T);
-            }
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content({typeof(T)}):{rsp.Text}");
-            return typed;
         }
-        public async UniTask<string> Post(string endpoint, object body, CancellationToken cancellationToken = default)
+
+        private RequestHelper CreateRequest(
+            string endpoint,
+            string method,
+            object body = null)
         {
-            var req = new RequestHelper
+            return new RequestHelper
             {
                 Uri = Path.Combine(_baseUrl, endpoint),
                 Headers = AuthHeader,
-                Method = "POST",
+                Method = method,
                 Body = body
             };
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
-
-            ResponseHelper rsp;
-            try
-            {
-                rsp = await RestClient.Request(req).AsUniTask(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
-                return null;
-            }
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content:{rsp.Text}");
-
-            return rsp.Text;
-        }
-        public async UniTask<T> Post<T>(string endpoint, object body, CancellationToken cancellationToken = default)
-        {
-            var req = new RequestHelper
-            {
-                Uri = Path.Combine(_baseUrl, endpoint),
-                Headers = AuthHeader,
-                Method = "POST",
-                Body = body
-            };
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
-
-            ResponseHelper rsp;
-            try
-            {
-                rsp = await RestClient.Request(req).AsUniTask(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
-                return default(T);
-            }
-
-            T typed;
-            if (!string.IsNullOrWhiteSpace(rsp.Text))
-            {
-                try
-                {
-                    typed = DeserializeObject<T>(rsp.Text);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Exce($"[{req.Method}] (/{endpoint}) DeserializeObject({typeof(T)}) Exception:{ex}", ex);
-                    return default(T);
-                }
-            }
-            else
-            {
-                _logger.Warn($"[{req.Method}] (/{endpoint}) Empty Response");
-                return default(T);
-            }
-
-            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content({typeof(T)}):{rsp.Text}");
-            return typed;
-        }
-
-        private T DeserializeObject<T>(string text)
-        {
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(text);
         }
     }
 }

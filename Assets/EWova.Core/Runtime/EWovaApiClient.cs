@@ -22,7 +22,7 @@ namespace EWova.NetService
         public UniTask<UserProfile> GetProfile(CancellationToken cancellationToken = default)
         {
             EnsureAuthenticated();
-            return Get<UserProfile>("user", cancellationToken: cancellationToken);
+            return Get<UserProfile>("user", ct: cancellationToken);
         }
 
         /// <summary>
@@ -36,13 +36,13 @@ namespace EWova.NetService
             return await GetOrganization(schoolGuid, cancellationToken: cancellationToken);
         }
 
-        public UniTask<UserProfile> GetUser(Guid guid, CancellationToken cancellationToken = default)
+        public UniTask<UserProfile> GetUser(Guid guid, CancellationToken ct = default)
         {
-            return Get<UserProfile>($"user/{guid}", cancellationToken: cancellationToken);
+            return Get<UserProfile>($"user/{guid}", ct: ct);
         }
         public UniTask<OrganizationProfile> GetOrganization(Guid guid, CancellationToken cancellationToken = default)
         {
-            return Get<OrganizationProfile>($"school/{guid}", cancellationToken: cancellationToken);
+            return Get<OrganizationProfile>($"school/{guid}", ct: cancellationToken);
         }
 
         private void EnsureAuthenticated()
