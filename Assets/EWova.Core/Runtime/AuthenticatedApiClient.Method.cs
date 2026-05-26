@@ -10,30 +10,29 @@ using System.Threading;
 
 namespace EWova.NetService
 {
-    public partial class Client
+    public partial class AuthenticatedApiClient
     {
-        Dictionary<string, string> AuthHeader
+        internal Dictionary<string, string> AuthHeader
         {
             get
             {
-                if (!IsLogin)
+                if (!IsUserAuthenticated)
                     return null;
 
-                return new() { ["Authorization"] = $"Bearer {_ewovaAuthManager.AccessToken}" };
+                return new() { ["Authorization"] = $"Bearer {AccessToken}" };
             }
         }
 
-        public static readonly Logger HttpLogger = new("[NetService/Client] ", Logger.Level.Full);
-        public async UniTask<string> Get(string path, CancellationToken cancellationToken = default)
+        public async UniTask<string> Get(string endpoint, CancellationToken cancellationToken = default)
         {
             var req = new RequestHelper
             {
-                Uri = Path.Combine(EWova.ApiBaseUrl, path),
+                Uri = Path.Combine(_baseUrl, endpoint),
                 Headers = AuthHeader,
                 Method = "GET",
             };
 
-            HttpLogger.Log($"[{req.Method}] Request Uri:{req.Uri}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
 
             ResponseHelper rsp;
             try
@@ -42,23 +41,23 @@ namespace EWova.NetService
             }
             catch (Exception ex)
             {
-                HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} Exception:{ex}", ex);
+                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
                 return null;
             }
 
-            HttpLogger.Log($"[{req.Method}] Response Uri:{req.Uri} Content:{rsp.Text}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content:{rsp.Text}");
             return rsp.Text;
         }
-        public async UniTask<T> Get<T>(string path, CancellationToken cancellationToken = default)
+        public async UniTask<T> Get<T>(string endpoint, CancellationToken cancellationToken = default)
         {
             var req = new RequestHelper
             {
-                Uri = Path.Combine(EWova.ApiBaseUrl, path),
+                Uri = Path.Combine(_baseUrl, endpoint),
                 Headers = AuthHeader,
                 Method = "GET",
             };
 
-            HttpLogger.Log($"[{req.Method}] Request Uri:{req.Uri}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
 
             ResponseHelper rsp;
             try
@@ -67,7 +66,7 @@ namespace EWova.NetService
             }
             catch (Exception ex)
             {
-                HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} Exception:{ex}", ex);
+                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
                 return default(T);
             }
 
@@ -80,30 +79,30 @@ namespace EWova.NetService
                 }
                 catch (Exception ex)
                 {
-                    HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} DeserializeObject({typeof(T)}) Exception:{ex}", ex);
+                    _logger.Exce($"[{req.Method}] (/{endpoint}) DeserializeObject({typeof(T)}) Exception:{ex}", ex);
                     return default(T);
                 }
             }
             else
             {
-                HttpLogger.Warn($"[{req.Method}] Warning Uri:{req.Uri} Empty Response");
+                _logger.Warn($"[{req.Method}] (/{endpoint}) Empty Response");
                 return default(T);
             }
 
-            HttpLogger.Log($"[{req.Method}] Response Uri:{req.Uri} Content({typeof(T)}):{rsp.Text}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content({typeof(T)}):{rsp.Text}");
             return typed;
         }
-        public async UniTask<string> Post(string path, object body, CancellationToken cancellationToken = default)
+        public async UniTask<string> Post(string endpoint, object body, CancellationToken cancellationToken = default)
         {
             var req = new RequestHelper
             {
-                Uri = Path.Combine(EWova.ApiBaseUrl, path),
+                Uri = Path.Combine(_baseUrl, endpoint),
                 Headers = AuthHeader,
                 Method = "POST",
                 Body = body
             };
 
-            HttpLogger.Log($"[{req.Method}] Request Uri:{req.Uri}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
 
             ResponseHelper rsp;
             try
@@ -112,25 +111,25 @@ namespace EWova.NetService
             }
             catch (Exception ex)
             {
-                HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} Exception:{ex}", ex);
+                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
                 return null;
             }
 
-            HttpLogger.Log($"[{req.Method}] Response Uri:{req.Uri} Content:{rsp.Text}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content:{rsp.Text}");
 
             return rsp.Text;
         }
-        public async UniTask<T> Post<T>(string path, object body, CancellationToken cancellationToken = default)
+        public async UniTask<T> Post<T>(string endpoint, object body, CancellationToken cancellationToken = default)
         {
             var req = new RequestHelper
             {
-                Uri = Path.Combine(EWova.ApiBaseUrl, path),
+                Uri = Path.Combine(_baseUrl, endpoint),
                 Headers = AuthHeader,
                 Method = "POST",
                 Body = body
             };
 
-            HttpLogger.Log($"[{req.Method}] Request Uri:{req.Uri}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Request");
 
             ResponseHelper rsp;
             try
@@ -139,7 +138,7 @@ namespace EWova.NetService
             }
             catch (Exception ex)
             {
-                HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} Exception:{ex}", ex);
+                _logger.Exce($"[{req.Method}] (/{endpoint}) Exception:{ex}", ex);
                 return default(T);
             }
 
@@ -152,17 +151,17 @@ namespace EWova.NetService
                 }
                 catch (Exception ex)
                 {
-                    HttpLogger.Exce($"[{req.Method}] Error Uri:{req.Uri} DeserializeObject({typeof(T)}) Exception:{ex}", ex);
+                    _logger.Exce($"[{req.Method}] (/{endpoint}) DeserializeObject({typeof(T)}) Exception:{ex}", ex);
                     return default(T);
                 }
             }
             else
             {
-                HttpLogger.Warn($"[{req.Method}] Warning Uri:{req.Uri} Empty Response");
+                _logger.Warn($"[{req.Method}] (/{endpoint}) Empty Response");
                 return default(T);
             }
 
-            HttpLogger.Log($"[{req.Method}] Response Uri:{req.Uri} Content({typeof(T)}):{rsp.Text}");
+            _logger.Log($"[{req.Method}] (/{endpoint}) Response Content({typeof(T)}):{rsp.Text}");
             return typed;
         }
 

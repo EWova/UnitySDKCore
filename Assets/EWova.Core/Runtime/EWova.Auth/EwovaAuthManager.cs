@@ -53,7 +53,7 @@ namespace EWova.Auth
         /// 預設值為 false。
         /// </summary>
         public bool UseNativeDeepLinkReceiver = false;
-        public string AccessToken => _tokenSet?.AccessToken;
+        internal string AccessToken => _tokenSet?.AccessToken;
 
         private TokenService _oidcAuth;
         private readonly List<IDeepLinkReceiver> _receivers = new();

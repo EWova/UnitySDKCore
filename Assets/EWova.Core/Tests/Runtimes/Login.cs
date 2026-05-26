@@ -1,27 +1,21 @@
 using Cysharp.Threading.Tasks;
 
-using EWova.Auth;
 using EWova.NetService;
 
 using UnityEngine;
 
 public class Login : MonoBehaviour
 {
-    Client client;
     [ContextMenu("Execute")]
     public void Execute()
     {
-        var ewovaAuth = EwovaAuthManager.Instance;
-
-        client = new Client(ewovaAuth);
-
-        Debug.LogWarning($"IsLogin: {client.IsLogin}");
+        Debug.LogWarning($"IsLogin: {AuthenticatedApiClient.IsUserAuthenticated}");
         StartAsync().Forget();
     }
 
     private async UniTaskVoid StartAsync()
     {
-        var profile = await client.GetProfile();
+        var profile = await AuthenticatedApiClient.EWovaService.GetProfile();
         if (profile != null)
         {
             Debug.LogWarning($"UserProfile: {profile}");
