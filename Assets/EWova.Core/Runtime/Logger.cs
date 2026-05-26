@@ -52,9 +52,7 @@ namespace EWova
         [HideInCallstack]
         public void Exce(object msg, Exception ex)
         {
-            if (PrintLevel.HasFlag(Level.Error))
-                UnityEngine.Debug.LogError(Prefix + msg);
-
+            UnityEngine.Debug.LogError(Prefix + msg);
             UnityEngine.Debug.LogException(ex);
         }
     }

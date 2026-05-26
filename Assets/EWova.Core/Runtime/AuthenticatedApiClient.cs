@@ -13,11 +13,8 @@ namespace EWova.NetService
         public readonly Logger _logger;
         private readonly string _baseUrl;
 
-        public readonly static EWovaApiClient EWovaService = new EWovaApiClient();
-
         public static bool IsUserAuthenticated => EwovaAuthManager.Instance.State == AuthState.Authenticated;
         public static AuthState AuthState => EwovaAuthManager.Instance.State;
-
         internal static string AccessToken => EwovaAuthManager.Instance.AccessToken;
     }
 }

@@ -41,6 +41,7 @@ namespace EWova.NetService
         public UniTask<T> Delete<T>(string endpoint, CancellationToken ct = default) =>
             Send<T>(endpoint, "DELETE", cancellationToken: ct);
 
+
         private async UniTask<string> Send(
             string endpoint,
             string method,
@@ -101,14 +102,18 @@ namespace EWova.NetService
         private RequestHelper CreateRequest(
             string endpoint,
             string method,
-            object body = null)
+            object body = null,
+            bool isAbsoluteUrl = false)
         {
             return new RequestHelper
             {
-                Uri = Path.Combine(_baseUrl, endpoint),
+                Uri = isAbsoluteUrl
+                    ? endpoint
+                    : Path.Combine(_baseUrl, endpoint),
+
                 Headers = AuthHeader,
                 Method = method,
-                Body = body
+                Body = body,
             };
         }
     }

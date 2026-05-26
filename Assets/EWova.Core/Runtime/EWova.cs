@@ -4,7 +4,6 @@ namespace EWova
 {
     public static partial class EWova
     {
-        public const string ApiBaseUrl = "https://dash.ewova.com/api/";
         public const string QueryPrefix = "ewova";
         public const string DeepLinkScheme = "ewova://";
 
