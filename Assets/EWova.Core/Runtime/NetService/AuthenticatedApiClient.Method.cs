@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Net;
+using UnityEditor.PackageManager;
+using System.Security.Cryptography;
 
 namespace EWova.NetService
 {
@@ -36,36 +38,30 @@ namespace EWova.NetService
             //   headers["x-sdk-version"] = PackageInfo.Version;
         }
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<string> Get(string endpoint, CancellationToken ct = default) => Send<string>(endpoint, "GET", cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<T> Get<T>(string endpoint, CancellationToken ct = default) => Send<T>(endpoint, "GET", cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<string> Post(string endpoint, object body, CancellationToken ct = default) => Send<string>(endpoint, "POST", body, cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<T> Post<T>(string endpoint, object body, CancellationToken ct = default) => Send<T>(endpoint, "POST", body, cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<string> Put(string endpoint, object body, CancellationToken ct = default) => Send<string>(endpoint, "PUT", body, cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<T> Put<T>(string endpoint, object body, CancellationToken ct = default) => Send<T>(endpoint, "PUT", body, cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<string> Delete(string endpoint, CancellationToken ct = default) => Send<string>(endpoint, "DELETE", cancellationToken: ct);
 
-        /// <inheritdoc cref="Send{T}(string, string, object, bool, CancellationToken)" />
+        ///<exception cref="ApiException"></exception>
         protected virtual UniTask<T> Delete<T>(string endpoint, CancellationToken ct = default) => Send<T>(endpoint, "DELETE", cancellationToken: ct);
 
-        ///<exception cref="ValidationException"></exception>
-        ///<exception cref="UnauthorizedException"></exception>
-        ///<exception cref="ForbiddenException"></exception>
-        ///<exception cref="NotFoundException"></exception>
-        ///<exception cref="RateLimitException"></exception>
-        ///<exception cref="ServerException"></exception>
         ///<exception cref="ApiException"></exception>
         private async UniTask<T> Send<T>(
             string endpoint,
@@ -76,9 +72,10 @@ namespace EWova.NetService
         {
             var req = CreateRequest(endpoint, method, body, requireAuth);
 
+            ResponseHelper rsp = null;
             try
             {
-                var rsp = await RestClient
+                rsp = await RestClient
                     .Request(req)
                     .AsUniTask(cancellationToken);
 
@@ -96,45 +93,39 @@ namespace EWova.NetService
             }
             catch (RequestException ex)
             {
+                _logger.Exce($"HTTP Error: {ex.Response}", ex);
                 throw ConvertRequestException(ex);
+            }
+            catch (OperationCanceledException)
+            {
+                throw; 
+            }
+            catch (JsonException ex)
+            {
+                throw new ApiException(ApiErrorCode.DeserializationError, HttpStatusCode.UnprocessableEntity, "Schema mismatch.", rsp?.Text, ex);
             }
             catch (Exception ex)
             {
-                throw new ApiException(
-                    0,
-                    "Unknown Error",
-                    inner: ex);
+                throw new ApiException(ApiErrorCode.NetworkError, 0, "Network or unexpected error.", null, ex);
             }
         }
 
 
-        private Exception ConvertRequestException(
-            RequestException ex)
+        private Exception ConvertRequestException(RequestException ex)
         {
-            var statusCode =
-                (HttpStatusCode)ex.StatusCode;
+            var statusCode = (HttpStatusCode)ex.StatusCode;
 
-            var response = ex.Response;
+            var errorCode = Enum.IsDefined(typeof(ApiErrorCode), ex.StatusCode)
+                ? (ApiErrorCode)ex.StatusCode
+                : (ex.StatusCode >= 500 ? ApiErrorCode.ServerError : ApiErrorCode.Unknown);
 
-            _logger.Exce(
-                $"HTTP {(int)statusCode} Exception: {response}",
-                ex);
-
-            return statusCode switch
-            {
-                HttpStatusCode.BadRequest => new ValidationException(response),
-                HttpStatusCode.Unauthorized => new UnauthorizedException(response),
-                HttpStatusCode.Forbidden => new ForbiddenException(response),
-                HttpStatusCode.NotFound => new NotFoundException(response),
-                HttpStatusCode.TooManyRequests => new RateLimitException(response),
-                >= HttpStatusCode.InternalServerError => new ServerException(statusCode, response),
-
-                _ => new ApiException(
-                    statusCode,
-                    $"HTTP Error {(int)statusCode}",
-                    response,
-                    ex)
-            };
+            return new ApiException(
+                errorCode,
+                statusCode,
+                $"HTTP Error {(int)statusCode}: {statusCode}",
+                ex.Response,
+                ex
+            );
         }
 
         private RequestHelper CreateRequest(

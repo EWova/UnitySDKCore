@@ -1,5 +1,3 @@
-using System;
-
 using EWova.Auth;
 
 namespace EWova.NetService
