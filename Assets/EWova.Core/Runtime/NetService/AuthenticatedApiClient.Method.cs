@@ -7,12 +7,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Net;
-using UnityEditor.PackageManager;
-using System.Security.Cryptography;
 
 namespace EWova.NetService
 {
-    public partial class AuthenticatedApiClient
+    public partial class AuthenticatedApiClient : IDisposable
     {
         private static readonly JsonSerializerSettings JsonSettings = new()
         {
@@ -31,6 +29,11 @@ namespace EWova.NetService
         };
 
         protected readonly Dictionary<string, string> AdditionalHeaders = new();
+
+        private readonly CancellationTokenSource _disposeCts = new();
+
+        private bool _disposed;
+
         protected virtual void ApplyProductHeaders(Dictionary<string, string> headers)
         {
             // example:
@@ -38,29 +41,82 @@ namespace EWova.NetService
             //   headers["x-sdk-version"] = PackageInfo.Version;
         }
 
-        ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<string> Get(string endpoint, CancellationToken ct = default) => Send<string>(endpoint, "GET", cancellationToken: ct);
+        public void Dispose()
+        {
+            Dispose(true);
+
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            if (disposing)
+            {
+                try { _disposeCts.Cancel(); } catch { }
+                _disposeCts.Dispose();
+            }
+        }
+
+        protected void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(AuthenticatedApiClient));
+        }
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<T> Get<T>(string endpoint, CancellationToken ct = default) => Send<T>(endpoint, "GET", cancellationToken: ct);
+        protected virtual UniTask<string> Get(
+            string endpoint,
+            CancellationToken ct = default)
+            => Send<string>(endpoint, "GET", cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<string> Post(string endpoint, object body, CancellationToken ct = default) => Send<string>(endpoint, "POST", body, cancellationToken: ct);
+        protected virtual UniTask<T> Get<T>(
+            string endpoint,
+            CancellationToken ct = default)
+            => Send<T>(endpoint, "GET", cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<T> Post<T>(string endpoint, object body, CancellationToken ct = default) => Send<T>(endpoint, "POST", body, cancellationToken: ct);
+        protected virtual UniTask<string> Post(
+            string endpoint,
+            object body,
+            CancellationToken ct = default)
+            => Send<string>(endpoint, "POST", body, cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<string> Put(string endpoint, object body, CancellationToken ct = default) => Send<string>(endpoint, "PUT", body, cancellationToken: ct);
+        protected virtual UniTask<T> Post<T>(
+            string endpoint,
+            object body,
+            CancellationToken ct = default)
+            => Send<T>(endpoint, "POST", body, cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<T> Put<T>(string endpoint, object body, CancellationToken ct = default) => Send<T>(endpoint, "PUT", body, cancellationToken: ct);
+        protected virtual UniTask<string> Put(
+            string endpoint,
+            object body,
+            CancellationToken ct = default)
+            => Send<string>(endpoint, "PUT", body, cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<string> Delete(string endpoint, CancellationToken ct = default) => Send<string>(endpoint, "DELETE", cancellationToken: ct);
+        protected virtual UniTask<T> Put<T>(
+            string endpoint,
+            object body,
+            CancellationToken ct = default)
+            => Send<T>(endpoint, "PUT", body, cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
-        protected virtual UniTask<T> Delete<T>(string endpoint, CancellationToken ct = default) => Send<T>(endpoint, "DELETE", cancellationToken: ct);
+        protected virtual UniTask<string> Delete(
+            string endpoint,
+            CancellationToken ct = default)
+            => Send<string>(endpoint, "DELETE", cancellationToken: ct);
+
+        ///<exception cref="ApiException"></exception>
+        protected virtual UniTask<T> Delete<T>(
+            string endpoint,
+            CancellationToken ct = default)
+            => Send<T>(endpoint, "DELETE", cancellationToken: ct);
 
         ///<exception cref="ApiException"></exception>
         private async UniTask<T> Send<T>(
@@ -70,14 +126,21 @@ namespace EWova.NetService
             bool requireAuth = true,
             CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
+
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _disposeCts.Token);
+
             var req = CreateRequest(endpoint, method, body, requireAuth);
 
             ResponseHelper rsp = null;
+
             try
             {
                 rsp = await RestClient
                     .Request(req)
-                    .AsUniTask(cancellationToken);
+                    .AsUniTask(linkedCts.Token);
 
                 var text = rsp.Text;
 
@@ -91,25 +154,35 @@ namespace EWova.NetService
                     text,
                     JsonSettings);
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (RequestException ex)
             {
                 _logger.Exce($"HTTP Error: {ex.Response}", ex);
+
                 throw ConvertRequestException(ex);
-            }
-            catch (OperationCanceledException)
-            {
-                throw; 
             }
             catch (JsonException ex)
             {
-                throw new ApiException(ApiErrorCode.DeserializationError, HttpStatusCode.UnprocessableEntity, "Schema mismatch.", rsp?.Text, ex);
+                throw new ApiException(
+                    ApiErrorCode.DeserializationError,
+                    HttpStatusCode.UnprocessableEntity,
+                    "Schema mismatch.",
+                    rsp?.Text,
+                    ex);
             }
             catch (Exception ex)
             {
-                throw new ApiException(ApiErrorCode.NetworkError, 0, "Network or unexpected error.", null, ex);
+                throw new ApiException(
+                    ApiErrorCode.NetworkError,
+                    0,
+                    "Network or unexpected error.",
+                    null,
+                    ex);
             }
         }
-
 
         private Exception ConvertRequestException(RequestException ex)
         {
@@ -117,7 +190,9 @@ namespace EWova.NetService
 
             var errorCode = Enum.IsDefined(typeof(ApiErrorCode), ex.StatusCode)
                 ? (ApiErrorCode)ex.StatusCode
-                : (ex.StatusCode >= 500 ? ApiErrorCode.ServerError : ApiErrorCode.Unknown);
+                : (ex.StatusCode >= 500
+                    ? ApiErrorCode.ServerError
+                    : ApiErrorCode.Unknown);
 
             return new ApiException(
                 errorCode,
@@ -138,7 +213,8 @@ namespace EWova.NetService
 
             if (requireAuth && AuthenticatedTokenSet != null)
             {
-                headers["Authorization"] = $"Bearer {AuthenticatedTokenSet.AccessToken}";
+                headers["Authorization"] =
+                    $"Bearer {AuthenticatedTokenSet.AccessToken}";
             }
 
             foreach (var kv in AdditionalHeaders)
