@@ -1,4 +1,5 @@
 using System;
+
 using EWova.Auth;
 
 namespace EWova.NetService
@@ -15,6 +16,7 @@ namespace EWova.NetService
 
         public static bool IsUserAuthenticated => EwovaAuthManager.Instance.State == AuthState.Authenticated;
         public static AuthState AuthState => EwovaAuthManager.Instance.State;
-        internal static string AccessToken => EwovaAuthManager.Instance.AccessToken;
+        internal static TokenSet AuthenticatedTokenSet => IsUserAuthenticated ? EwovaAuthManager.Instance.TokenSet : null;
+        public static UserProfile AuthenticatedUserProfile => IsUserAuthenticated ? EwovaAuthManager.Instance.AuthenticatedUserProfile : null;
     }
 }

@@ -1,4 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+using System;
+using System.Collections.Generic;
+
 using UnityEngine.Scripting;
 
 namespace EWova.Auth
@@ -12,6 +17,9 @@ namespace EWova.Auth
     {
         public string AccessToken { get; set; }
         public string IdToken { get; set; }
+
+        public JwtObject Jwt { get; set; }
+
         public string RefreshToken { get; set; }
 
         /// <summary>access_token 的絕對過期時間（UTC）</summary>
@@ -34,6 +42,7 @@ namespace EWova.Auth
             {
                 AccessToken = response.AccessToken,
                 IdToken = response.IdToken,
+                Jwt = !string.IsNullOrEmpty(response.IdToken) ? JWT.Read(response.IdToken) : null,
                 RefreshToken = response.RefreshToken,
                 ExpiresAt = now.AddSeconds(response.ExpiresIn),
                 RefreshExpiresAt = response.RefreshExpiresIn > 0

@@ -1,6 +1,6 @@
 using System;
 
-namespace EWova.NetService
+namespace EWova
 {
     public sealed class EWovaUriPath
     {

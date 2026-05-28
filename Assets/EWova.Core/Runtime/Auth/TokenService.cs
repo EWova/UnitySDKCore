@@ -115,50 +115,6 @@ namespace EWova.Auth
             return TokenSet.FromResponse(response);
         }
 
-        // ── id_token 本地驗證 ────────────────────────────────────────
-
-        /// <summary>
-        ///     本地驗證 id_token JWT Payload（nonce / iss / aud / exp）。
-        ///     不驗證簽章（需要 JWKS 端點，此處為 client-side 輕量驗證）。
-        /// </summary>
-        public void ValidateIdToken(string idToken, string expectedNonce)
-        {
-            if (string.IsNullOrEmpty(idToken)) return; // 若 AS 不回傳 id_token 則跳過
-
-            try
-            {
-                var parts = idToken.Split('.');
-                if (parts.Length < 2)
-                {
-                    throw new InvalidOperationException("Ticket Token 格式無效：段落數不足（非標準 JWT）");
-                }
-
-                var payloadJson = Encoding.UTF8.GetString(PkceHelper.Base64UrlDecode(parts[1]));
-                var payload = JsonConvert.DeserializeObject<IdTokenPayload>(payloadJson);
-
-                if (payload.Nonce != expectedNonce)
-                    throw new InvalidOperationException(
-                        $"id_token nonce 不符：expected={expectedNonce}, actual={payload.Nonce}");
-
-                if (payload.Issuer != m_config.Issuer)
-                    throw new InvalidOperationException(
-                        $"id_token iss 不符：expected={m_config.Issuer}, actual={payload.Issuer}");
-
-                if (payload.Audience != m_config.ClientId)
-                    throw new InvalidOperationException(
-                        $"id_token aud 不符：expected={m_config.ClientId}, actual={payload.Audience}");
-
-                var expiry = DateTimeOffset.FromUnixTimeSeconds(payload.Expiry).UtcDateTime;
-                if (DateTime.UtcNow >= expiry)
-                    throw new InvalidOperationException($"id_token 已過期：exp={expiry:O}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Err($"[TokenService] id_token 驗證失敗：{ex.Message}");
-                throw;
-            }
-        }
-
         #region HTTP 工具
         /// <summary>
         ///     Unified HTTP POST engine supporting pluggable content types and authorization context.

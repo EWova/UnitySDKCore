@@ -36,7 +36,7 @@ namespace EWova.Auth
             );
         }
         private const string k_clientId = "learning-portfolio-sdk";
-        private const string k_scope = "openid profile offline_access";
+        private const string k_scope = "openid profile email roles organization offline_access";
 
         public static OidcConfig Prod;
         public static OidcConfig Dev;

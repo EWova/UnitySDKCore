@@ -1,5 +1,7 @@
 using Cysharp.Threading.Tasks;
 
+using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -53,12 +55,12 @@ namespace EWova.Auth
         /// 預設值為 false。
         /// </summary>
         public bool UseNativeDeepLinkReceiver = false;
-        internal string AccessToken => _tokenSet?.AccessToken;
+        internal TokenSet TokenSet { get; private set; }
+        public UserProfile AuthenticatedUserProfile { get; internal set; }
 
         private TokenService _oidcAuth;
         private readonly List<IDeepLinkReceiver> _receivers = new();
         private bool _isProcessingDeepLink = false;
-        private TokenSet _tokenSet;
         private CancellationTokenSource _cts;
         private CancellationTokenSource _renewLoopCts;
         private OidcConfig CurrentOdicConfig => OidcConfigs.Current;
@@ -110,6 +112,19 @@ namespace EWova.Auth
 
                 Logger.Log($"DeepLinkReceiver unregistered: {receiver.Name}");
             }
+        }
+
+        public void Logout()
+        {
+            StopRenewLoop();
+
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
+            TokenSet = null;
+            _isProcessingDeepLink = false;
+            SetState(AuthState.Unauthenticated);
         }
 
         private void OnUrlReceived(IDeepLinkReceiver receiver, string url)
@@ -203,7 +218,7 @@ namespace EWova.Auth
             Logger.Log("LaunchTicket 開始進行 OIDC 認證流程...");
             try
             {
-                _tokenSet = await _oidcAuth.ExchangeLaunchTicketAsync(launchTicket, token);
+                TokenSet = await _oidcAuth.ExchangeLaunchTicketAsync(launchTicket, token);
 
                 // 寫入狀態前 double-check 取消狀態，防止與 Logout 發生 Race Condition
                 token.ThrowIfCancellationRequested();
@@ -235,16 +250,16 @@ namespace EWova.Auth
         }
         private async UniTask<string> RefreshInternalAsync(CancellationToken cancellationToken)
         {
-            if (_tokenSet == null || string.IsNullOrEmpty(_tokenSet.RefreshToken) || _tokenSet.IsRefreshTokenExpired)
+            if (TokenSet == null || string.IsNullOrEmpty(TokenSet.RefreshToken) || TokenSet.IsRefreshTokenExpired)
             {
                 Logger.Warn("Token 不存在或 Refresh Token 已過期，直接執行登出。");
                 Logout();
                 return null;
             }
 
-            if (!_tokenSet.IsAccessTokenExpired)
+            if (!TokenSet.IsAccessTokenExpired)
             {
-                return _tokenSet.AccessToken;
+                return TokenSet.AccessToken;
             }
 
             var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken);
@@ -253,13 +268,16 @@ namespace EWova.Auth
             SetState(AuthState.RefreshingToken);
             try
             {
-                var refreshed = await _oidcAuth.RefreshAsync(_tokenSet.RefreshToken, linkedToken);
+                var refreshed = await _oidcAuth.RefreshAsync(TokenSet.RefreshToken, linkedToken);
 
                 linkedToken.ThrowIfCancellationRequested();
 
-                _tokenSet = refreshed;
+                TokenSet = refreshed;
                 SetState(AuthState.Authenticated);
-                return _tokenSet.AccessToken;
+
+                // 刷新成功後更新使用者資訊，確保 AuthenticatedUserProfile 中的資料與最新的 TokenSet 保持一致（例如可能有新的 claims）
+                UpdateUserProfile();
+                return TokenSet.AccessToken;
             }
             catch (RefreshTokenGrantException)
             {
@@ -270,14 +288,16 @@ namespace EWova.Auth
             catch (OperationCanceledException)
             {
                 Logger.Warn("刷新 token 過程已取消");
-                if (State == AuthState.RefreshingToken) SetState(AuthState.Authenticated);
-                return _tokenSet?.AccessToken;
+                if (State == AuthState.RefreshingToken)
+                    SetState(AuthState.Authenticated);
+                return TokenSet?.AccessToken;
             }
             catch (Exception ex)
             {
                 Logger.Err($"刷新 token 時發生例外: {ex.Message}");
-                if (State == AuthState.RefreshingToken) SetState(AuthState.Authenticated);
-                return _tokenSet?.AccessToken;
+                if (State == AuthState.RefreshingToken)
+                    SetState(AuthState.Authenticated);
+                return TokenSet?.AccessToken;
             }
         }
         private async UniTaskVoid StartTokenRenewLoop(CancellationToken token)
@@ -294,10 +314,10 @@ namespace EWova.Auth
                     await UniTask.Delay(checkInterval, cancellationToken: token);
 
                     // 只有在已登入狀態下才需要驗證與續期
-                    if (State == AuthState.Authenticated && _tokenSet != null)
+                    if (State == AuthState.Authenticated && TokenSet != null)
                     {
                         // 提前 30 秒續期，確保在 access token 過期前完成續期流程，避免因網路延遲等因素導致的過期問題
-                        if (_tokenSet.IsAccessTokenExpired)
+                        if (TokenSet.IsAccessTokenExpired)
                         {
                             Logger.Log("偵測到 Access Token 即將過期，觸發自動續期流程...");
                             await RefreshInternalAsync(token);
@@ -315,19 +335,6 @@ namespace EWova.Auth
             }
         }
 
-        public void Logout()
-        {
-            StopRenewLoop();
-
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-
-            _tokenSet = null;
-            _isProcessingDeepLink = false;
-            SetState(AuthState.Unauthenticated);
-        }
-
         private void StopRenewLoop()
         {
             if (_renewLoopCts != null)
@@ -337,7 +344,6 @@ namespace EWova.Auth
                 _renewLoopCts = null;
             }
         }
-
         private void SetState(AuthState newState)
         {
             if (State == newState)
@@ -347,6 +353,8 @@ namespace EWova.Auth
 
             if (newState == AuthState.Authenticated)
             {
+                UpdateUserProfile();
+
                 StopRenewLoop();
                 _renewLoopCts = new CancellationTokenSource();
                 StartTokenRenewLoop(_renewLoopCts.Token).Forget();
@@ -354,7 +362,18 @@ namespace EWova.Auth
             else if (newState == AuthState.Unauthenticated)
             {
                 StopRenewLoop();
+                AuthenticatedUserProfile = null;
             }
+        }
+        private void UpdateUserProfile()
+        {
+            if (State != AuthState.Authenticated || TokenSet == null)
+            {
+                AuthenticatedUserProfile = null;
+                return;
+            }
+
+            AuthenticatedUserProfile = UserProfile.FromJwt(TokenSet.Jwt, DateTimeOffset.UtcNow);
         }
 
         private void OnDestroy()
