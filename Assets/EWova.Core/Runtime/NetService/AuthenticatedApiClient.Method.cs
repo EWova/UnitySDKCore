@@ -211,11 +211,8 @@ namespace EWova.NetService
         {
             var headers = new Dictionary<string, string>(DefaultHeaders);
 
-            if (requireAuth && AuthenticatedTokenSet != null)
-            {
-                headers["Authorization"] =
-                    $"Bearer {AuthenticatedTokenSet.AccessToken}";
-            }
+            if (requireAuth && IsUserAuthenticated)
+                headers["Authorization"] = $"Bearer {AccessToken}";
 
             foreach (var kv in AdditionalHeaders)
             {
