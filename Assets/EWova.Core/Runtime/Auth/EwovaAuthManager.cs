@@ -69,7 +69,17 @@ namespace EWova.Auth
         }
 #endif
 
-        public static EwovaAuthManager Instance { get; private set; }
+        public static EwovaAuthManager Instance 
+        {
+            get 
+            {
+                if(!Application.isPlaying)
+                    throw new InvalidOperationException("EwovaAuthManager 取得失敗，請在 Play 模式下使用。");
+                return _instance;
+            }
+            private set => _instance = value;
+        }
+        private static EwovaAuthManager _instance;
 #if UNITY_EDITOR
         public MockDeepLinkReceiver MockComponent;
 #endif

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Net;
+using UnityEngine.Networking;
 
 namespace EWova.NetService
 {
@@ -134,13 +135,28 @@ namespace EWova.NetService
 
             var req = CreateRequest(endpoint, method, body, requireAuth);
 
+            if (UnityEngine.Application.isPlaying)
+                return await SendRestClient<T>(endpoint, method, body, requireAuth, linkedCts.Token);
+            else
+                return await SendUnityWebRequest<T>(endpoint, method, body, requireAuth, linkedCts.Token);
+        }
+
+        private async UniTask<T> SendRestClient<T>(
+            string endpoint,
+            string method,
+            object body,
+            bool requireAuth,
+            CancellationToken token)
+        {
+            var req = CreateRequest(endpoint, method, body, requireAuth);
+
             ResponseHelper rsp = null;
 
             try
             {
                 rsp = await RestClient
                     .Request(req)
-                    .AsUniTask(linkedCts.Token);
+                    .AsUniTask(token);
 
                 var text = rsp.Text;
 
@@ -150,9 +166,7 @@ namespace EWova.NetService
                 if (string.IsNullOrWhiteSpace(text))
                     return default;
 
-                return JsonConvert.DeserializeObject<T>(
-                    text,
-                    JsonSettings);
+                return JsonConvert.DeserializeObject<T>(text, JsonSettings);
             }
             catch (RequestException ex)
             {
@@ -187,7 +201,6 @@ namespace EWova.NetService
                     message: "Failed to deserialize response.",
                     inner: ex);
             }
-
             catch (OperationCanceledException)
             {
                 _logger.Warn($"Request cancelled: {method} {endpoint}");
@@ -197,6 +210,74 @@ namespace EWova.NetService
             {
                 _logger.Exce($"Unexpected Error: {ex}", ex);
                 throw;
+            }
+        }
+
+        private async UniTask<T> SendUnityWebRequest<T>(
+            string endpoint,
+            string method,
+            object body,
+            bool requireAuth,
+            CancellationToken token)
+        {
+            string url = BuildUrl(endpoint);
+
+            using var request = new UnityWebRequest(url, method);
+
+            // body
+            if (body != null)
+            {
+                var json = JsonConvert.SerializeObject(body, JsonSettings);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+
+                request.uploadHandler = new UploadHandlerRaw(bytes);
+                request.SetRequestHeader("Content-Type", "application/json");
+            }
+
+            request.downloadHandler = new DownloadHandlerBuffer();
+
+            if (requireAuth && IsUserAuthenticated)
+                request.SetRequestHeader("Authorization", $"Bearer {AccessToken}");
+
+            try
+            {
+                await request.SendWebRequest().ToUniTask(cancellationToken: token);
+
+                var text = request.downloadHandler.text;
+
+                if (typeof(T) == typeof(string))
+                    return (T)(object)text;
+
+                if (string.IsNullOrWhiteSpace(text))
+                    return default;
+
+                return JsonConvert.DeserializeObject<T>(text, JsonSettings);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.Warn($"Request cancelled: {method} {endpoint}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // UnityWebRequest error
+                var code = request.responseCode;
+                var response = request.downloadHandler?.text;
+
+                _logger.Exce($"UnityWebRequest Error: {response}", ex);
+
+                throw new ApiException(
+                    errorCode: code >= 500 ? ApiErrorCode.ServerError : ApiErrorCode.Unknown,
+                    statusCode: (HttpStatusCode)code,
+                    endPoint: endpoint,
+                    responseBody: response,
+                    message: $"HTTP Error {code}",
+                    inner: ex
+                );
+            }
+            finally
+            {
+                request.Dispose();
             }
         }
 
