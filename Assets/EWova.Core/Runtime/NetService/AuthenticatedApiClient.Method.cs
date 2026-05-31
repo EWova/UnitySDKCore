@@ -154,53 +154,50 @@ namespace EWova.NetService
                     text,
                     JsonSettings);
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
             catch (RequestException ex)
             {
                 _logger.Exce($"HTTP Error: {ex.Response}", ex);
 
-                throw ConvertRequestException(ex);
+                var statusCode = (HttpStatusCode)ex.StatusCode;
+
+                var errorCode = Enum.IsDefined(typeof(ApiErrorCode), ex.StatusCode)
+                    ? (ApiErrorCode)ex.StatusCode
+                    : (ex.StatusCode >= 500
+                        ? ApiErrorCode.ServerError
+                        : ApiErrorCode.Unknown);
+
+                throw new ApiException(
+                    errorCode: errorCode,
+                    statusCode: statusCode,
+                    endPoint: endpoint,
+                    responseBody: ex.Response,
+                    message: $"HTTP Error {(int)statusCode}: {statusCode}",
+                    inner: ex
+                );
             }
             catch (JsonException ex)
             {
+                _logger.Exce($"Deserialization Error: {rsp?.Text}", ex);
+
                 throw new ApiException(
-                    ApiErrorCode.DeserializationError,
-                    HttpStatusCode.UnprocessableEntity,
-                    "Schema mismatch.",
-                    rsp?.Text,
-                    ex);
+                    errorCode: ApiErrorCode.DeserializationError,
+                    statusCode: null,
+                    endPoint: endpoint,
+                    responseBody: rsp?.Text,
+                    message: "Failed to deserialize response.",
+                    inner: ex);
+            }
+
+            catch (OperationCanceledException)
+            {
+                _logger.Warn($"Request cancelled: {method} {endpoint}");
+                throw;
             }
             catch (Exception ex)
             {
-                throw new ApiException(
-                    ApiErrorCode.NetworkError,
-                    0,
-                    "Network or unexpected error.",
-                    null,
-                    ex);
+                _logger.Exce($"Unexpected Error: {ex}", ex);
+                throw;
             }
-        }
-
-        private Exception ConvertRequestException(RequestException ex)
-        {
-            var statusCode = (HttpStatusCode)ex.StatusCode;
-
-            var errorCode = Enum.IsDefined(typeof(ApiErrorCode), ex.StatusCode)
-                ? (ApiErrorCode)ex.StatusCode
-                : (ex.StatusCode >= 500
-                    ? ApiErrorCode.ServerError
-                    : ApiErrorCode.Unknown);
-
-            return new ApiException(
-                errorCode,
-                statusCode,
-                $"HTTP Error {(int)statusCode}: {statusCode}",
-                ex.Response,
-                ex
-            );
         }
 
         private RequestHelper CreateRequest(

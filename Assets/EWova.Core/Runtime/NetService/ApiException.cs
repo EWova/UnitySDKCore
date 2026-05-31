@@ -23,20 +23,27 @@ namespace EWova.NetService
     public class ApiException : Exception
     {
         public ApiErrorCode ErrorCode { get; }
-        public HttpStatusCode HttpStatusCode { get; }
-        public string ResponseText { get; }
+        public HttpStatusCode? StatusCode { get; }
+        public string EndPoint { get; }
+        public string ResponseBody { get; }
+
+        public bool IsNetworkError => StatusCode != null;
+        public bool IsServerError => (int?)StatusCode >= 500;
+        public bool IsClientError => StatusCode >= (HttpStatusCode)400 && StatusCode < (HttpStatusCode)500;
 
         public ApiException(
             ApiErrorCode errorCode,
-            HttpStatusCode httpStatusCode,
+            HttpStatusCode? statusCode,
+            string endPoint,
+            string responseBody,
             string message,
-            string responseText = null,
-            Exception inner = null)
+            Exception inner)
             : base(message, inner)
         {
             ErrorCode = errorCode;
-            HttpStatusCode = httpStatusCode;
-            ResponseText = responseText;
+            StatusCode = statusCode;
+            EndPoint = endPoint;
+            ResponseBody = responseBody;
         }
     }
 }
