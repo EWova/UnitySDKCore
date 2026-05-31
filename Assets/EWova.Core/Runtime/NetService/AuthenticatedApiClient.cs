@@ -20,8 +20,8 @@ namespace EWova.NetService
         private readonly string _baseUrl;
         private readonly IAuthManager _auth;
 
-        public bool IsUserAuthenticated => _auth.CurrentAuthState == AuthState.Authenticated;
-        public AuthState AuthState => _auth.CurrentAuthState;
+        public bool IsUserAuthenticated => _auth != null && _auth.CurrentAuthState == AuthState.Authenticated;
+        public AuthState AuthState => _auth != null ? _auth.CurrentAuthState : AuthState.Unauthenticated;
         internal string AccessToken => IsUserAuthenticated ? _auth.GetAccessToken() : null;
         public UserProfile AuthenticatedUserProfile => IsUserAuthenticated ? _auth.AuthenticatedUserProfile : null;
     }
