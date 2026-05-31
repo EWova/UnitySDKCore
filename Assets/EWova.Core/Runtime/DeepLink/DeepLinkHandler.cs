@@ -1,10 +1,7 @@
-//#define ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+using EWova.DeepLink.Win;
+#endif
 
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
-using Assets.DeepLinkingForWindows;
-#endif
-#endif
 using System;
 using System.Collections.Generic;
 
@@ -84,11 +81,9 @@ namespace EWova.DeepLink
             if (scheme == null)
                 return;
 
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
             WindowsDeepLinking.Initialize(scheme);
             WindowsDeepLinking.DeepLinkActivated += OnDeepLinkActivated;
-#endif
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
             UnityEngine.Application.deepLinkActivated += OnDeepLinkActivated;
             s_androidDeepLinkActivatedAfterSceneLoad += OnDeepLinkActivated;
@@ -102,10 +97,8 @@ namespace EWova.DeepLink
             if (!m_isEventActive)
                 return;
 
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
             WindowsDeepLinking.DeepLinkActivated -= OnDeepLinkActivated;
-#endif
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
             UnityEngine.Application.deepLinkActivated -= OnDeepLinkActivated;
             s_androidDeepLinkActivatedAfterSceneLoad -= OnDeepLinkActivated;
@@ -136,12 +129,9 @@ namespace EWova.DeepLink
         {
             get
             {
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-#if !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && ASSET_SUPPORT_DEEPLINKINGFORWINDOWS
+
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
                 return true;
-#else
-                return false;
-#endif
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
                 return true;
 #else

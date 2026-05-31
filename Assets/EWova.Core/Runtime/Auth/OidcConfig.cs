@@ -15,7 +15,7 @@ namespace EWova.Auth
         public string Issuer { get; }
         public string ExchangeTicketEndpoint { get; }
 
-        public OidcConfig(
+        internal OidcConfig(
             string clientId,
             string baseAuthUrl,
             string redirectUri,

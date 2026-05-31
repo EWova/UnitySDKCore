@@ -1,8 +1,12 @@
 using Cysharp.Threading.Tasks;
 
+using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 
 using UnityEngine;
@@ -11,6 +15,29 @@ namespace EWova.Auth
 {
     public class EwovaAuthManager : MonoBehaviour, IAuthManager
     {
+        private class AuthorizeProcess
+        {
+            public AuthorizeProcess()
+            {
+                CreatedAt = DateTimeOffset.UtcNow;
+                CodeVerifier = PkceHelper.GenerateCodeVerifier();
+                CodeChallenge = PkceHelper.GenerateCodeChallenge(CodeVerifier);
+                State = PkceHelper.GenerateState();
+                Nonce = PkceHelper.GenerateNonce();
+            }
+
+            public readonly DateTimeOffset CreatedAt;
+            public readonly string CodeVerifier;
+            public readonly string CodeChallenge;
+            public readonly string State;
+            public readonly string Nonce;
+
+            /// <summary>
+            /// 此授權流程是否已過期（超過 10 分鐘未完成）。過期的流程應該被丟棄，並要求使用者重新啟動認證流程。
+            /// </summary>
+            public bool IsExpired => DateTimeOffset.UtcNow - CreatedAt > TimeSpan.FromMinutes(10);
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
@@ -58,11 +85,12 @@ namespace EWova.Auth
         /// </summary>
         public bool UseNativeDeepLinkReceiver = false;
 
-        private TokenService _oidcAuth;
+        internal TokenService _tokenService { get; private set; }
         private readonly List<IDeepLinkReceiver> _receivers = new();
 
         private bool _isProcessingDeepLink = false;
         private bool _isRefreshing = false; // 防止併發刷新
+        private AuthorizeProcess _currentAuthorizeProcess;
 
         private CancellationTokenSource _cts;
         private CancellationTokenSource _renewLoopCts;
@@ -71,7 +99,7 @@ namespace EWova.Auth
         private void Awake()
         {
             _cts = new CancellationTokenSource();
-            _oidcAuth = new TokenService(CurrentOdicConfig);
+            _tokenService = new TokenService(CurrentOdicConfig);
             RegisterDefaultReceivers();
 
             if (CurrentAuthState == AuthState.Initializing)
@@ -175,6 +203,22 @@ namespace EWova.Auth
             return !string.IsNullOrEmpty(newToken);
         }
 
+        /// <summary>
+        /// 獲取 OIDC 認證 URL，使用者可以透過這個 URL 進行登入，完成後會由 Deep Link 接收器接收回傳的認證結果。
+        /// </summary>
+        public string GetAuthorizeUrl(string uiLocales = null)
+        {
+            _currentAuthorizeProcess = new AuthorizeProcess();
+
+            var authorizeUrl = CurrentOdicConfig.BuildAuthorizeUrl(
+                _currentAuthorizeProcess.CodeChallenge,
+                _currentAuthorizeProcess.State,
+                _currentAuthorizeProcess.Nonce,
+                uiLocales);
+
+            return authorizeUrl;
+        }
+
         public void ClearTokenSet()
         {
             StopRenewLoop();
@@ -210,40 +254,37 @@ namespace EWova.Auth
             }
 
             Logger.Log($"DeepLinkReceiver: '{receiver.GetType().Name}'. URL: '{url}'");
-
-            try
-            {
-                _isProcessingDeepLink = true;
-                HandleDeepLink(url);
-            }
-            catch (Exception ex)
-            {
-                _isProcessingDeepLink = false;
-                Logger.Err($"DeepLink handling failed: {ex}");
-                SetState(AuthState.Unauthenticated);
-            }
+            HandleDeepLink(url).Forget();
         }
 
-        private void HandleDeepLink(string url)
+        private async UniTaskVoid HandleDeepLink(string url)
         {
-            if (!url.StartsWith(CurrentOdicConfig.RedirectUri, StringComparison.OrdinalIgnoreCase))
+            if (_isProcessingDeepLink)
             {
-                Logger.Warn($"忽略不相關的 URL，預期以 {CurrentOdicConfig.RedirectUri} 開頭，但收到: {url}");
-                _isProcessingDeepLink = false;
+                Logger.Warn($"目前正在處理另一個請求，忽略新的 URL: {url}");
                 return;
             }
+
+            _isProcessingDeepLink = true;
 
             try
             {
                 var uri = new Uri(url);
-                NameValueCollection query = HttpUtility.ParseQueryString(uri.Query);
+                var redirectUri = new Uri(CurrentOdicConfig.RedirectUri);
+
+                if (!string.Equals(uri.Scheme, redirectUri.Scheme, StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger.Warn($"忽略不相關的 URL，預期以 {CurrentOdicConfig.RedirectUri} 開頭，但收到: {url}");
+                    return;
+                }
+
+                var query = HttpUtility.ParseQueryString(uri.Query);
 
                 var error = query["error"];
                 if (!string.IsNullOrEmpty(error))
                 {
                     Logger.Err($"OIDC 認證錯誤回傳: {error}");
                     SetState(AuthState.Unauthenticated);
-                    _isProcessingDeepLink = false;
                     return;
                 }
 
@@ -251,51 +292,93 @@ namespace EWova.Auth
                 if (!string.IsNullOrEmpty(launchTicket))
                 {
                     Logger.Log($"接收到 LaunchTicket 參數的 URL: {url}");
-                    var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, this.GetCancellationTokenOnDestroy()).Token;
-                    ProcessOidcAuthFromLaunchTicket(launchTicket, linkedToken).Forget();
+
+                    SetState(AuthState.Authenticating);
+
+                    var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(
+                        _cts.Token,
+                        this.GetCancellationTokenOnDestroy()
+                    ).Token;
+
+                    var tokenSet = await _tokenService.ExchangeLaunchTicketAsync(
+                        launchTicket,
+                        linkedToken
+                    );
+
+                    CurrentTokenSet = tokenSet;
+                    SetState(AuthState.Authenticated);
+                    Logger.Log("LaunchTicket 交換成功，已成功驗證使用者身份。");
                     return;
                 }
 
-                Logger.Err($"收到的 URL 中缺少必要的參數，無法進行認證流程。URL: {url}");
+                var code = query["code"];
+                var state = query["state"];
+                if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(state))
+                {
+                    Logger.Log($"接收到 Authorization Code 參數的 URL: {url}");
+
+                    if (_currentAuthorizeProcess == null || _currentAuthorizeProcess.IsExpired)
+                    {
+                        Logger.Warn("收到的授權回應已過期，請重新啟動認證流程。");
+                        SetState(AuthState.Unauthenticated);
+                        return;
+                    }
+
+                    var thisState = _currentAuthorizeProcess.State;
+                    var thisCodeVerifier = _currentAuthorizeProcess.CodeVerifier;
+                    var thisNonce = _currentAuthorizeProcess.Nonce;
+
+                    // state 安全比較（避免簡單 string 比對）
+                    if (!CryptographicOperations.FixedTimeEquals(
+                            Encoding.UTF8.GetBytes(state),
+                            Encoding.UTF8.GetBytes(thisState)))
+                    {
+                        Logger.Warn($"state 不匹配，可能 CSRF 或流程錯亂。預期: {thisState}，實際: {state}");
+                        SetState(AuthState.Unauthenticated);
+                        return;
+                    }
+
+                    SetState(AuthState.Authenticating);
+
+                    var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(
+                        _cts.Token,
+                        this.GetCancellationTokenOnDestroy()
+                    ).Token;
+
+                    var tokenSet = await _tokenService.ExchangeCodeAsync(
+                        code,
+                        thisCodeVerifier,
+                        thisNonce,
+                        linkedToken
+                    );
+
+                    CurrentTokenSet = tokenSet;
+                    Logger.Log("Authorization Code 交換成功，已成功驗證使用者身份。");
+                    SetState(AuthState.Authenticated);
+                    return;
+                }
+
+                Logger.Err($"收到的 URL 缺少必要參數 (code/state/launch_ticket)，無法進行認證流程: {url}");
                 SetState(AuthState.Unauthenticated);
-                _isProcessingDeepLink = false;
             }
-            catch (Exception ex)
+            catch (TokenEndpointException ex)
             {
-                Logger.Err($"處理 URL 時發生例外: {ex.Message}");
-                UnityEngine.Debug.LogException(ex);
+                Logger.Err($"Token 交換失敗: {ex.Error} - {ex.Message}");
                 SetState(AuthState.Unauthenticated);
-                _isProcessingDeepLink = false;
             }
-        }
-
-        private async UniTaskVoid ProcessOidcAuthFromLaunchTicket(string launchTicket, CancellationToken token = default)
-        {
-            SetState(AuthState.Authenticating);
-            Logger.Log("LaunchTicket 開始進行 OIDC 認證流程...");
-
-            try
+            catch (RefreshTokenExpiredException)
             {
-                CurrentTokenSet = await _oidcAuth.ExchangeLaunchTicketAsync(launchTicket, token);
-                token.ThrowIfCancellationRequested();
-
-                SetState(AuthState.Authenticated);
-                Logger.Log("LaunchTicket OIDC 認證流程完成，使用者已成功登入。");
-            }
-            catch (RefreshTokenGrantException)
-            {
-                Logger.Err("LaunchTicket Token 無效或已過期，請重新啟動認證流程。");
+                Logger.Err("提供的 LaunchTicket 無效或已過期，請重新啟動認證流程。");
                 SetState(AuthState.Unauthenticated);
             }
             catch (OperationCanceledException)
             {
-                Logger.Warn("LaunchTicket 交換過程已取消");
-                if (CurrentAuthState == AuthState.Authenticating)
-                    SetState(AuthState.Unauthenticated);
+                Logger.Warn("處理 URL 的過程已取消");
+                SetState(AuthState.Unauthenticated);
             }
             catch (Exception ex)
             {
-                Logger.Err($"LaunchTicket 進行 OIDC 認證流程時發生例外: {ex.Message}");
+                Logger.Err($"處理 URL 時發生例外: {ex.Message}");
                 UnityEngine.Debug.LogException(ex);
                 SetState(AuthState.Unauthenticated);
             }
@@ -332,7 +415,7 @@ namespace EWova.Auth
 
             try
             {
-                var refreshed = await _oidcAuth.RefreshAsync(CurrentTokenSet.RefreshToken, cancellationToken);
+                var refreshed = await _tokenService.RefreshAsync(CurrentTokenSet.RefreshToken, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 CurrentTokenSet = refreshed;
@@ -341,7 +424,7 @@ namespace EWova.Auth
 
                 return CurrentTokenSet.AccessToken;
             }
-            catch (RefreshTokenGrantException)
+            catch (RefreshTokenExpiredException)
             {
                 Logger.Err("Refresh token 無效或已過期，使用者需要重新登入。");
                 ClearTokenSet();

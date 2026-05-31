@@ -19,29 +19,40 @@ namespace EWova.Auth
         void IDeepLinkReceiver.Initialize(Action<IDeepLinkReceiver, string> onUrlReceived) => _mockCallback = onUrlReceived;
         void IDisposable.Dispose() => _mockCallback = null;
 
-        [ContextMenu("Invoke DeepLink With IDeepLinkReceiver")]
+        [ContextMenu("Get TestURL and Invoke DeepLink With IDeepLinkReceiver")]
         public void InvokeDeepLinkWithReceiver()
         {
             if (string.IsNullOrEmpty(_deeplink))
             {
-                Logger.Err("錯誤的 Deeplink，請先取得 launch ticket 並填入 _deeplink 欄位");
-                return;
+                RequestLaunchTicket((str) =>
+                {
+                    _deeplink = str;
+                    _mockCallback?.Invoke(this, _deeplink);
+                }).Forget();
+            }
+            else
+            {
+                _mockCallback?.Invoke(this, _deeplink);
             }
 
-            _mockCallback?.Invoke(this, _deeplink);
         }
 
-        [ContextMenu("Invoke DeepLink With Application.OpenURL")]
+        [ContextMenu("Get TestURL and Invoke DeepLink With Application.OpenURL")]
         public void InvokeDeepLinkWithOpenURL()
         {
             if (string.IsNullOrEmpty(_deeplink))
             {
-                Logger.Err("錯誤的 Deeplink，請先取得 launch ticket 並填入 _deeplink 欄位");
-                return;
+                RequestLaunchTicket((str) =>
+                {
+                    _deeplink = str;
+                    Application.OpenURL(str);
+                }).Forget();
             }
-
-            // 從 Application.OpenURL 觸發的 DeepLink 會由 DefaultDeepLinkReceiver 處理，繞過 MockDeepLinkReceiver 的 callback
-            Application.OpenURL(_deeplink);
+            else
+            {
+                // 從 Application.OpenURL 觸發的 DeepLink 會由 DefaultDeepLinkReceiver 處理，繞過 MockDeepLinkReceiver 的 callback
+                Application.OpenURL(_deeplink);
+            }
         }
 
         [Header("Request")]
@@ -51,8 +62,13 @@ namespace EWova.Auth
         [Header("Response")]
         public LaunchTicketResponse res;
 
-        [ContextMenu("Get Test URL")]
+        [ContextMenu("Just Get TestURL")]
         public void GetTestUrl()
+        {
+            RequestLaunchTicket((str) => _deeplink = str).Forget();
+        }
+
+        private async UniTaskVoid RequestLaunchTicket(Action<string> action = null)
         {
             bool error = false;
 
@@ -71,22 +87,14 @@ namespace EWova.Auth
             if (error)
                 return;
 
-            RequestLaunchTicket().Forget();
-        }
-
-
-        private async UniTaskVoid RequestLaunchTicket()
-        {
             res = new LaunchTicketResponse();
 
             // get reflect object 
-            var _oidcAuth = EwovaAuthManager.Instance.GetType()
-                .GetField("_oidcAuth", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .GetValue(EwovaAuthManager.Instance) as TokenService;
-
+            var _oidcAuth = EwovaAuthManager.Instance._tokenService;
             try
             {
                 res = await _oidcAuth.CreateLaunchTicketAsync(AccessToken, AppId);
+                action?.Invoke(res.deepLink);
             }
             catch (TokenEndpointException ex)
             {
@@ -98,8 +106,6 @@ namespace EWova.Auth
                 Logger.Err($"取得 launch ticket 失敗: {ex}");
                 return;
             }
-
-            _deeplink = res.deepLink;
         }
     }
 }

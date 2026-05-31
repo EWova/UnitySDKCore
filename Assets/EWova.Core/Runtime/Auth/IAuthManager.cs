@@ -25,6 +25,10 @@ namespace EWova.Auth
         ///     清除當前的 TokenSet（例如登出時）
         /// </summary>
         void ClearTokenSet();
+        /// <summary>
+        ///    獲取授權 URL，供用戶進行認證（例如在 WebView 中打開）。URL 中應包含必要的參數（如 client_id、redirect_uri、scope 等）。
+        /// </summary>
+        string GetAuthorizeUrl(string uiLocales = null);
 
         /// <summary>
         ///     獲取有效的 access_token，必要時自動刷新

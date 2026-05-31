@@ -39,12 +39,16 @@ namespace EWova.Auth
         /// </summary>
         public async UniTask<TokenSet> ExchangeCodeAsync(
             string code,
+            string codeVerifier,
+            string nonce,
             CancellationToken cancellationToken = default)
         {
-            var formBody = $"grant_type=authorization_code" +
-                           $"&code={Uri.EscapeDataString(code)}" +
-                           $"&client_id={Uri.EscapeDataString(m_config.ClientId)}" +
-                           $"&redirect_uri={Uri.EscapeDataString(m_config.RedirectUri)}";
+            var formBody =
+                $"grant_type=authorization_code" +
+                $"&code={Uri.EscapeDataString(code)}" +
+                $"&redirect_uri={Uri.EscapeDataString(m_config.RedirectUri)}" +
+                $"&client_id={Uri.EscapeDataString(m_config.ClientId)}" +
+                $"&code_verifier={Uri.EscapeDataString(codeVerifier)}";
 
             var response = await SendAsync<TokenResponse>(
                 url: m_config.TokenEndpoint,
@@ -52,20 +56,41 @@ namespace EWova.Auth
                 contentType: "application/x-www-form-urlencoded",
                 cancellationToken: cancellationToken);
 
-            return TokenSet.FromResponse(response);
+            var tokenSet = TokenSet.FromResponse(response);
+            var payload = tokenSet.Jwt.Payload;
+
+            // nonce check（OIDC replay protection）
+            if (payload.Nonce != nonce)
+                throw new TokenEndpointException(400, "invalid_nonce", "Nonce mismatch");
+
+            // audience check
+            if (payload.Audience != m_config.ClientId)
+                throw new TokenEndpointException(400, "invalid_audience", "Audience mismatch");
+
+            // issuer check
+            if (payload.Issuer != m_config.Issuer)
+                throw new TokenEndpointException(400, "invalid_issuer", "Issuer mismatch");
+
+            // expiry check
+            var expiry = DateTimeOffset.FromUnixTimeSeconds(payload.Expiry).UtcDateTime;
+            if (DateTime.UtcNow >= expiry)
+                throw new TokenEndpointException(400, "id_token_expired", "Token expired");
+
+            return tokenSet;
         }
 
         /// <summary>
         ///     以 Launch Ticket 換取 TokenSet（適用於從其他 App 啟動後拿到的 launch_ticket）。
         /// </summary>
-        /// <exception cref="RefreshTokenGrantException">當 AS 回傳 HTTP 400 invalid_grant，表示 launch_ticket 無效或已過期</exception>
+        /// <exception cref="RefreshTokenExpiredException">當 AS 回傳 HTTP 400 invalid_grant，表示 launch_ticket 無效或已過期</exception>
         public async UniTask<TokenSet> ExchangeLaunchTicketAsync(
             string launchTicket,
             CancellationToken cancellationToken = default)
         {
-            var formBody = $"grant_type=urn:ewova:params:oauth:grant-type:launch-ticket" +
-                           $"&launch_ticket={Uri.EscapeDataString(launchTicket)}" +
-                           $"&client_id={Uri.EscapeDataString(m_config.ClientId)}";
+            var formBody =
+                $"grant_type=urn:ewova:params:oauth:grant-type:launch-ticket" +
+                $"&launch_ticket={Uri.EscapeDataString(launchTicket)}" +
+                $"&client_id={Uri.EscapeDataString(m_config.ClientId)}";
 
             var response = await SendAsync<TokenResponse>(
                 url: m_config.TokenEndpoint,
@@ -97,22 +122,48 @@ namespace EWova.Auth
         /// <summary>
         ///     使用有效的 Refresh Token 刷新並獲取全新的 TokenSet。
         /// </summary>
-        /// <exception cref="RefreshTokenGrantException">當 AS 回傳 HTTP 400 invalid_grant，表示 refresh_token 已失效或已被重複使用</exception>
+        /// <exception cref="RefreshTokenExpiredException">當 AS 回傳 HTTP 400 invalid_grant，表示 refresh_token 已失效或已被重複使用</exception>
         public async UniTask<TokenSet> RefreshAsync(
             string refreshToken,
             CancellationToken cancellationToken = default)
         {
-            var formBody = $"grant_type=refresh_token" +
-                           $"&refresh_token={Uri.EscapeDataString(refreshToken)}" +
-                           $"&client_id={Uri.EscapeDataString(m_config.ClientId)}";
+            var body =
+                $"grant_type=refresh_token" +
+                $"&refresh_token={Uri.EscapeDataString(refreshToken)}" +
+                $"&client_id={Uri.EscapeDataString(m_config.ClientId)}" +
+                $"&scope={Uri.EscapeDataString(m_config.Scopes)}";
 
-            var response = await SendAsync<TokenResponse>(
-                url: m_config.TokenEndpoint,
-                body: formBody,
-                contentType: "application/x-www-form-urlencoded",
-                cancellationToken: cancellationToken);
+            const int maxRetries = 3;
 
-            return TokenSet.FromResponse(response);
+            for (int attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
+                {
+                    var response = await SendAsync<TokenResponse>(
+                        url: m_config.TokenEndpoint,
+                        body: body,
+                        contentType: "application/x-www-form-urlencoded",
+                        cancellationToken: cancellationToken);
+
+                    return TokenSet.FromResponse(response);
+                }
+                catch (TokenEndpointException ex) when (ex.Error == "invalid_grant")
+                {
+                    // refresh token 本質失效，不 retry
+                    throw new RefreshTokenExpiredException(ex);
+                }
+                catch (Exception) when (attempt < maxRetries - 1)
+                {
+                    await UniTask.Delay(
+                        TimeSpan.FromSeconds(1 << attempt),
+                        cancellationToken: cancellationToken);
+                }
+            }
+
+            throw new TokenEndpointException(
+                500,
+                "refresh_failed",
+                "Refresh token failed after retries");
         }
 
         #region HTTP 工具
@@ -132,26 +183,24 @@ namespace EWova.Auth
             req.downloadHandler = new DownloadHandlerBuffer();
 
             req.SetRequestHeader("Content-Type", contentType);
+
             if (!string.IsNullOrEmpty(accessToken))
-            {
                 req.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-            }
+
+            await req.SendWebRequest().WithCancellation(cancellationToken);
+
+            var text = req.downloadHandler?.text ?? string.Empty;
+
+            if (req.result != UnityWebRequest.Result.Success)
+                throw CreateTokenException(req.responseCode, text);
 
             try
             {
-                await req.SendWebRequest().WithCancellation(cancellationToken);
-
-                if (req.result != UnityWebRequest.Result.Success)
-                {
-                    ThrowApiError(req);
-                }
-
-                return JsonConvert.DeserializeObject<TResponse>(req.downloadHandler.text);
+                return JsonConvert.DeserializeObject<TResponse>(text);
             }
-            catch (UnityWebRequestException ex)
+            catch (Exception ex)
             {
-                ThrowApiError(ex.UnityWebRequest);
-                throw;
+                throw new TokenEndpointException(req.responseCode, "invalid_response", text, ex);
             }
         }
 
@@ -168,17 +217,23 @@ namespace EWova.Auth
                 return string.Empty;
             }
         }
-        private static void ThrowApiError(UnityWebRequest req)
+
+        private static Exception CreateTokenException(long statusCode, string body, Exception inner = null)
         {
-            var errorBody = req.downloadHandler?.text ?? string.Empty;
+            var error = TryParseErrorField(body);
 
-            var error = TryParseErrorField(errorBody);
+            var isInvalidGrant =
+                statusCode == 400 &&
+                string.Equals(error, "invalid_grant", StringComparison.OrdinalIgnoreCase);
 
-            throw error switch
+            if (isInvalidGrant)
             {
-                "invalid_grant" => new RefreshTokenGrantException(new TokenEndpointException(req.responseCode, error, errorBody)),
-                _ => new TokenEndpointException(req.responseCode, error, errorBody)
-            };
+                return new RefreshTokenExpiredException(
+                    new TokenEndpointException(statusCode, error, body, inner)
+                );
+            }
+
+            return new TokenEndpointException(statusCode, error, body, inner);
         }
         #endregion
 
@@ -202,19 +257,18 @@ namespace EWova.Auth
         public string Error { get; }
         public string Body { get; }
 
-        public TokenEndpointException(long statusCode, string error, string body)
-            : base($"Token endpoint error {statusCode}: {error}\n{body}")
+        public TokenEndpointException(long statusCode, string error, string body, Exception inner = null)
+            : base($"Token endpoint error {statusCode}: {error}\n{body}", inner)
         {
             StatusCode = statusCode;
             Error = error;
             Body = body;
         }
     }
-
     /// <summary>Token 無效或已過期（invalid_grant）</summary>
-    public class RefreshTokenGrantException : Exception
+    public class RefreshTokenExpiredException : Exception
     {
-        public RefreshTokenGrantException(Exception inner)
+        public RefreshTokenExpiredException(Exception inner)
             : base("Refresh token has expired. Re-authentication required.", inner)
         {
         }
