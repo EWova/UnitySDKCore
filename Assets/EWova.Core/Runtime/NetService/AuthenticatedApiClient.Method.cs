@@ -35,11 +35,13 @@ namespace EWova.NetService
 
         private bool _disposed;
 
-        protected virtual void ApplyProductHeaders(Dictionary<string, string> headers)
+        protected virtual Dictionary<string, string> GetProductHeaders()
         {
             // example:
             //   headers["x-sdk-name"] = "learning-portfolio-sdk";
             //   headers["x-sdk-version"] = PackageInfo.Version;
+
+            return null;
         }
 
         public void Dispose()
@@ -293,11 +295,17 @@ namespace EWova.NetService
                 headers["Authorization"] = $"Bearer {AccessToken}";
 
             foreach (var kv in AdditionalHeaders)
-            {
                 headers[kv.Key] = kv.Value;
+
+            var productHeader = GetProductHeaders();
+            if (productHeader != null)
+            {
+                foreach (var kv in productHeader)
+                    headers[kv.Key] = kv.Value;
             }
 
-            ApplyProductHeaders(headers);
+            if (_logger.PrintLevel.HasFlag(Logger.Level.Info))
+                _logger.Log($"Creating Request: {method} {endpoint} with body: {(body != null ? JsonConvert.SerializeObject(body, JsonSettings) : "null")} with headers: {JsonConvert.SerializeObject(headers)}");
 
             return new RequestHelper
             {

@@ -2,37 +2,40 @@ using EWova.Auth;
 
 using UnityEngine;
 
-public class Login : MonoBehaviour
+namespace EWova.Core.Tests
 {
-    [ContextMenu("Open Login Page")]
-    public void OpenLoginPage()
+    public class Login : MonoBehaviour
     {
-        IAuthManager auth = EwovaAuthManager.Instance;
-
-        if (auth.CurrentAuthState == AuthState.Authenticated)
+        [ContextMenu("Open Login Page")]
+        public void OpenLoginPage()
         {
-            Debug.LogWarning("User is already authenticated.");
-            return;
+            IAuthManager auth = EwovaAuthManager.Instance;
+
+            if (auth.CurrentAuthState == AuthState.Authenticated)
+            {
+                Debug.LogWarning("User is already authenticated.");
+                return;
+            }
+
+            var page = auth.GetAuthorizeUrl();
+            Debug.LogWarning($"Opening login page: {page}");
+            Application.OpenURL(page);
         }
-
-        var page = auth.GetAuthorizeUrl();
-        Debug.LogWarning($"Opening login page: {page}");
-        Application.OpenURL(page);
-    }
-    [ContextMenu("Get User Info")]
-    public void GetUser()
-    {
-        IAuthManager auth = EwovaAuthManager.Instance;
-
-        if (auth.CurrentAuthState == AuthState.Authenticated)
+        [ContextMenu("Get User Info")]
+        public void GetUser()
         {
-            Debug.LogWarning("User is authenticated.");
+            IAuthManager auth = EwovaAuthManager.Instance;
 
-            Debug.LogWarning($"UserProfile: {auth.AuthenticatedUserProfile}");
-        }
-        else
-        {
-            Debug.LogWarning("User is not authenticated.");
+            if (auth.CurrentAuthState == AuthState.Authenticated)
+            {
+                Debug.LogWarning("User is authenticated.");
+
+                Debug.LogWarning($"UserProfile: {auth.AuthenticatedUserProfile}");
+            }
+            else
+            {
+                Debug.LogWarning("User is not authenticated.");
+            }
         }
     }
 }
