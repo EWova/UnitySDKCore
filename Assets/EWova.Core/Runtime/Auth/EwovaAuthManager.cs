@@ -15,27 +15,81 @@ namespace EWova.Auth
 {
     public class EwovaAuthManager : MonoBehaviour, IAuthManager
     {
-        private class AuthorizeProcess
+        private sealed class AuthorizeProcess : IAuthorizeProcess
         {
-            public AuthorizeProcess()
+            private bool _disposed;
+            private bool _cancelled;
+            private readonly CancellationTokenSource _cts = new();
+            public AuthorizeProcess(IAuthManager authManager)
             {
+                AuthManager = authManager
+                    ?? throw new ArgumentNullException(nameof(authManager));
+
                 CreatedAt = DateTimeOffset.UtcNow;
+
                 CodeVerifier = PkceHelper.GenerateCodeVerifier();
                 CodeChallenge = PkceHelper.GenerateCodeChallenge(CodeVerifier);
                 State = PkceHelper.GenerateState();
                 Nonce = PkceHelper.GenerateNonce();
             }
-
+            public IAuthManager AuthManager { get; }
             public readonly DateTimeOffset CreatedAt;
-            public readonly string CodeVerifier;
-            public readonly string CodeChallenge;
-            public readonly string State;
-            public readonly string Nonce;
+            internal readonly string CodeVerifier;
+            internal readonly string CodeChallenge;
+            internal readonly string State;
+            internal readonly string Nonce;
+            public bool IsCompleted { get; private set; }
+            public bool IsCancelled => _cancelled;
+            public bool IsExpired =>
+                DateTimeOffset.UtcNow - CreatedAt >
+                TimeSpan.FromMinutes(10);
+            internal CancellationToken CancellationToken =>
+                _cts.Token;
+            public event Action OnCancelled;
+            public event Action OnCompleted;
+            internal void Complete()
+            {
+                ThrowIfDisposed();
 
-            /// <summary>
-            /// 此授權流程是否已過期（超過 10 分鐘未完成）。過期的流程應該被丟棄，並要求使用者重新啟動認證流程。
-            /// </summary>
-            public bool IsExpired => DateTimeOffset.UtcNow - CreatedAt > TimeSpan.FromMinutes(10);
+                if (_cancelled || IsCompleted)
+                    return;
+
+                IsCompleted = true;
+
+                OnCompleted?.Invoke();
+            }
+            public void Cancel()
+            {
+                ThrowIfDisposed();
+
+                if (_cancelled || IsCompleted)
+                    return;
+
+                _cancelled = true;
+
+                _cts.Cancel();
+
+                OnCancelled?.Invoke();
+            }
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+                if (!_cancelled && !IsCompleted)
+                    Cancel();
+
+                _disposed = true;
+
+                _cts.Dispose();
+
+                OnCancelled = null;
+                OnCompleted = null;
+            }
+            private void ThrowIfDisposed()
+            {
+                if (_disposed)
+                    throw new ObjectDisposedException(nameof(AuthorizeProcess));
+            }
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -69,11 +123,11 @@ namespace EWova.Auth
         }
 #endif
 
-        public static EwovaAuthManager Instance 
+        public static EwovaAuthManager Instance
         {
-            get 
+            get
             {
-                if(!Application.isPlaying)
+                if (!Application.isPlaying)
                     throw new InvalidOperationException("EwovaAuthManager 取得失敗，請在 Play 模式下使用。");
                 return _instance;
             }
@@ -116,6 +170,36 @@ namespace EWova.Auth
             {
                 SetState(AuthState.Unauthenticated);
             }
+        }
+        private void OnDestroy()
+        {
+            CancelAuthorizeProcess();
+            StopRenewLoop();
+
+            _cts?.Cancel();
+            _cts?.Dispose();
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.playModeStateChanged -= EditorApplication_playModeStateChanged;
+#endif
+
+            foreach (var r in _receivers)
+            {
+                try
+                {
+                    r.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Err($"Receiver dispose failed: {ex}");
+                }
+            }
+            _receivers.Clear();
+        }
+        private void CancelAuthorizeProcess()
+        {
+            _currentAuthorizeProcess?.Dispose();
+            _currentAuthorizeProcess = null;
         }
 
         private void RegisterDefaultReceivers()
@@ -216,9 +300,11 @@ namespace EWova.Auth
         /// <summary>
         /// 獲取 OIDC 認證 URL，使用者可以透過這個 URL 進行登入，完成後會由 Deep Link 接收器接收回傳的認證結果。
         /// </summary>
-        public string GetAuthorizeUrl(string uiLocales = null)
+        public IAuthorizeProcess ProcessAuthorizationCodeCallback(string uiLocales = null)
         {
-            _currentAuthorizeProcess = new AuthorizeProcess();
+            CancelAuthorizeProcess();
+
+            _currentAuthorizeProcess = new AuthorizeProcess(this);
 
             var authorizeUrl = CurrentOdicConfig.BuildAuthorizeUrl(
                 _currentAuthorizeProcess.CodeChallenge,
@@ -226,11 +312,15 @@ namespace EWova.Auth
                 _currentAuthorizeProcess.Nonce,
                 uiLocales);
 
-            return authorizeUrl;
+            Application.OpenURL(authorizeUrl);
+
+            return _currentAuthorizeProcess;
         }
 
         public void ClearTokenSet()
         {
+            CancelAuthorizeProcess();
+
             StopRenewLoop();
 
             _cts?.Cancel();
@@ -290,14 +380,18 @@ namespace EWova.Auth
 
                 var query = HttpUtility.ParseQueryString(uri.Query);
 
+                // Error 回傳處理
                 var error = query["error"];
                 if (!string.IsNullOrEmpty(error))
                 {
-                    Logger.Err($"OIDC 認證錯誤回傳: {error}");
+                    Logger.Err($"認證錯誤回傳: {error}");
                     SetState(AuthState.Unauthenticated);
                     return;
                 }
 
+                // LaunchTicket 流程處理
+                // 來源通常為 EWova 的 應用程式、啟動器或官方網站透過 DeepLink 啟動
+                // 包含 launch_ticket 參數。這個流程不需要驗證 state，直接帶入的憑證交換 token 即可。
                 var launchTicket = query["launch_ticket"];
                 if (!string.IsNullOrEmpty(launchTicket))
                 {
@@ -321,22 +415,39 @@ namespace EWova.Auth
                     return;
                 }
 
+                // Authorization Code 流程處理
+                // 一定必須透過 ProcessAuthorizationCodeCallback() 啟動流程，才能正確驗證 state 並交換 token
+                // 如果收到帶有 code/state 的 URL，但沒有正在進行的授權流程，則可能是 DeepLink 接收器暫存了舊的 URL 或流程已完成後的重複回調，這種情況下會忽略該 URL 並記錄警告。
                 var code = query["code"];
                 var state = query["state"];
                 if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(state))
                 {
                     Logger.Log($"接收到 Authorization Code 參數的 URL: {url}");
 
-                    if (_currentAuthorizeProcess == null || _currentAuthorizeProcess.IsExpired)
+                    var authProcessing = _currentAuthorizeProcess;
+
+                    if (authProcessing == null)
                     {
-                        Logger.Warn("收到的授權回應已過期，請重新啟動認證流程。");
+                        Logger.Warn("沒有正在進行的授權流程，但收到了帶有 code/state 的 URL，可能是 DeepLink 接收器暫存了舊的 URL 或流程已完成後的重複回調。將忽略此 URL。");
+                        return;
+                    }
+
+                    if (authProcessing.IsCancelled)
+                    {
+                        Logger.Warn("授權流程已取消，將忽略此 URL。");
+                        return;
+                    }
+
+                    if (authProcessing.IsExpired)
+                    {
+                        Logger.Warn("授權流程已過期，將忽略此 URL。");
                         SetState(AuthState.Unauthenticated);
                         return;
                     }
 
-                    var thisState = _currentAuthorizeProcess.State;
-                    var thisCodeVerifier = _currentAuthorizeProcess.CodeVerifier;
-                    var thisNonce = _currentAuthorizeProcess.Nonce;
+                    var thisState = authProcessing.State;
+                    var thisCodeVerifier = authProcessing.CodeVerifier;
+                    var thisNonce = authProcessing.Nonce;
 
                     // state 安全比較（避免簡單 string 比對）
                     if (!CryptographicOperations.FixedTimeEquals(
@@ -350,10 +461,12 @@ namespace EWova.Auth
 
                     SetState(AuthState.Authenticating);
 
-                    var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(
-                        _cts.Token,
-                        this.GetCancellationTokenOnDestroy()
-                    ).Token;
+                    var linkedToken =
+                        CancellationTokenSource.CreateLinkedTokenSource(
+                            _cts.Token,
+                            authProcessing.CancellationToken,
+                            this.GetCancellationTokenOnDestroy()
+                        ).Token;
 
                     var tokenSet = await _tokenService.ExchangeCodeAsync(
                         code,
@@ -362,9 +475,23 @@ namespace EWova.Auth
                         linkedToken
                     );
 
+                    if (authProcessing.IsCancelled)
+                    {
+                        Logger.Warn("授權流程已被取消，儘管成功交換了 Token，但將忽略結果並要求重新認證。");
+                        SetState(AuthState.Unauthenticated);
+                        return;
+                    }
+
                     CurrentTokenSet = tokenSet;
-                    Logger.Log("Authorization Code 交換成功，已成功驗證使用者身份。");
+
+                    if (ReferenceEquals(authProcessing, _currentAuthorizeProcess))
+                        _currentAuthorizeProcess = null;
+
+                    Logger.Log("Authorization Code 交換成功");
                     SetState(AuthState.Authenticated);
+
+                    authProcessing.Complete();
+                    authProcessing.Dispose();
                     return;
                 }
 
@@ -374,22 +501,26 @@ namespace EWova.Auth
             catch (TokenEndpointException ex)
             {
                 Logger.Err($"Token 交換失敗: {ex.Error} - {ex.Message}");
+                CancelAuthorizeProcess();
                 SetState(AuthState.Unauthenticated);
             }
             catch (RefreshTokenExpiredException)
             {
                 Logger.Err("提供的 LaunchTicket 無效或已過期，請重新啟動認證流程。");
+                CancelAuthorizeProcess();
                 SetState(AuthState.Unauthenticated);
             }
             catch (OperationCanceledException)
             {
                 Logger.Warn("處理 URL 的過程已取消");
+                CancelAuthorizeProcess();
                 SetState(AuthState.Unauthenticated);
             }
             catch (Exception ex)
             {
                 Logger.Err($"處理 URL 時發生例外: {ex.Message}");
                 UnityEngine.Debug.LogException(ex);
+                CancelAuthorizeProcess();
                 SetState(AuthState.Unauthenticated);
             }
             finally
@@ -531,31 +662,6 @@ namespace EWova.Auth
             }
 
             AuthenticatedUserProfile = UserProfile.FromJwt(CurrentTokenSet.Jwt, DateTimeOffset.UtcNow);
-        }
-
-        private void OnDestroy()
-        {
-            StopRenewLoop();
-
-            _cts?.Cancel();
-            _cts?.Dispose();
-
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.playModeStateChanged -= EditorApplication_playModeStateChanged;
-#endif
-
-            foreach (var r in _receivers)
-            {
-                try
-                {
-                    r.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Err($"Receiver dispose failed: {ex}");
-                }
-            }
-            _receivers.Clear();
         }
     }
 }

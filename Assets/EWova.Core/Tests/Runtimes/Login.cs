@@ -6,6 +6,8 @@ namespace EWova.Core.Tests
 {
     public class Login : MonoBehaviour
     {
+        IAuthorizeProcess _loginProcess;
+
         [ContextMenu("Open Login Page")]
         public void OpenLoginPage()
         {
@@ -17,25 +19,52 @@ namespace EWova.Core.Tests
                 return;
             }
 
-            var page = auth.GetAuthorizeUrl();
-            Debug.LogWarning($"Opening login page: {page}");
-            Application.OpenURL(page);
+            _loginProcess = auth.ProcessAuthorizationCodeCallback();
+            _loginProcess.OnCompleted += () =>
+            {
+                Debug.Log($"Login 處理完成. 驗證者身分 {auth.AuthenticatedUserProfile?.Name}.");
+                _loginProcess = null;
+            };
+            _loginProcess.OnCancelled += () =>
+            {
+                Debug.Log("Login 取消處理.");
+                _loginProcess = null;
+            };
+
+            Debug.Log("Login 處理開始. 請完成驗證流程.");
         }
-        [ContextMenu("Get User Info")]
-        public void GetUser()
+
+        [ContextMenu("Cancel Login Process")]
+        public void Cancel()
+        {
+            if (_loginProcess == null)
+            {
+                Debug.LogWarning("No login process to cancel.");
+                return;
+            }
+
+            _loginProcess.Dispose();
+            _loginProcess = null;
+        }
+
+        [ContextMenu("Open Login Page and Cancel After 1 Seconds")]
+        public void OpenLoginPageAndCancelAfter1Seconds()
+        {
+            OpenLoginPage();
+            Invoke(nameof(Cancel), 1f);
+        }
+
+        [ContextMenu("Logout")]
+        public void Logout()
         {
             IAuthManager auth = EwovaAuthManager.Instance;
-
-            if (auth.CurrentAuthState == AuthState.Authenticated)
-            {
-                Debug.LogWarning("User is authenticated.");
-
-                Debug.LogWarning($"UserProfile: {auth.AuthenticatedUserProfile}");
-            }
-            else
+            if (auth.CurrentAuthState != AuthState.Authenticated)
             {
                 Debug.LogWarning("User is not authenticated.");
+                return;
             }
+            auth.ClearTokenSet();
+            Debug.Log("User logged out.");
         }
     }
 }
