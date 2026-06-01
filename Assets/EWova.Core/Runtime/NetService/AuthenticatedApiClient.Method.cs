@@ -23,10 +23,8 @@ namespace EWova.NetService
             ["Content-Type"] = "application/json",
             ["Accept"] = "application/json",
 
-            ["x-sdk-core-name"] = "ewova-core",
-            ["x-sdk-core-version"] = PackageInfo.Version,
-
             ["x-sdk-platform"] = "unity",
+            ["x-sdk-version"] = PackageInfo.Version,
         };
 
         protected readonly Dictionary<string, string> AdditionalHeaders = new();
