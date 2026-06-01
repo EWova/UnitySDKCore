@@ -124,7 +124,6 @@ namespace EWova.NetService
             string endpoint,
             string method,
             object body = null,
-            bool requireAuth = true,
             CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
@@ -133,22 +132,19 @@ namespace EWova.NetService
                 cancellationToken,
                 _disposeCts.Token);
 
-            var req = CreateRequest(endpoint, method, body, requireAuth);
-
             if (UnityEngine.Application.isPlaying)
-                return await SendRestClient<T>(endpoint, method, body, requireAuth, linkedCts.Token);
+                return await SendRestClient<T>(endpoint, method, body, linkedCts.Token);
             else
-                return await SendUnityWebRequest<T>(endpoint, method, body, requireAuth, linkedCts.Token);
+                return await SendUnityWebRequest<T>(endpoint, method, body, linkedCts.Token);
         }
 
         private async UniTask<T> SendRestClient<T>(
             string endpoint,
             string method,
             object body,
-            bool requireAuth,
             CancellationToken token)
         {
-            var req = CreateRequest(endpoint, method, body, requireAuth);
+            var req = CreateRequest(endpoint, method, body);
 
             ResponseHelper rsp = null;
 
@@ -217,7 +213,6 @@ namespace EWova.NetService
             string endpoint,
             string method,
             object body,
-            bool requireAuth,
             CancellationToken token)
         {
             string url = BuildUrl(endpoint);
@@ -231,13 +226,12 @@ namespace EWova.NetService
                 var bytes = System.Text.Encoding.UTF8.GetBytes(json);
 
                 request.uploadHandler = new UploadHandlerRaw(bytes);
-                request.SetRequestHeader("Content-Type", "application/json");
             }
 
             request.downloadHandler = new DownloadHandlerBuffer();
-
-            if (requireAuth && IsUserAuthenticated)
-                request.SetRequestHeader("Authorization", $"Bearer {AccessToken}");
+            var headers = CreateHeader();
+            foreach (var kv in headers)
+                request.SetRequestHeader(kv.Key, kv.Value);
 
             try
             {
@@ -281,16 +275,12 @@ namespace EWova.NetService
             }
         }
 
-        private RequestHelper CreateRequest(
-            string endpoint,
-            string method,
-            object body = null,
-            bool requireAuth = true)
+        private Dictionary<string, string> CreateHeader()
         {
             var headers = new Dictionary<string, string>(DefaultHeaders);
 
-            if (requireAuth && IsUserAuthenticated)
-                headers["Authorization"] = $"Bearer {AccessToken}";
+            if (IsUserAuthenticated)
+                headers[key: "Authorization"] = $"Bearer {AccessToken}";
 
             foreach (var kv in AdditionalHeaders)
                 headers[kv.Key] = kv.Value;
@@ -301,6 +291,16 @@ namespace EWova.NetService
                 foreach (var kv in productHeader)
                     headers[kv.Key] = kv.Value;
             }
+
+            return headers;
+        }
+
+        private RequestHelper CreateRequest(
+            string endpoint,
+            string method,
+            object body = null)
+        {
+            var headers = CreateHeader();
 
             if (_logger.PrintLevel.HasFlag(Logger.Level.Info))
                 _logger.Log($"Creating Request: {method} {endpoint} with body: {(body != null ? JsonConvert.SerializeObject(body, JsonSettings) : "null")} with headers: {JsonConvert.SerializeObject(headers)}");
