@@ -170,7 +170,7 @@ namespace EWova.NetService
 
                 var statusCode = (HttpStatusCode)ex.StatusCode;
 
-                var errorCode = Enum.IsDefined(typeof(ApiErrorCode), ex.StatusCode)
+                var errorCode = Enum.IsDefined(typeof(ApiErrorCode), (int)ex.StatusCode)
                     ? (ApiErrorCode)ex.StatusCode
                     : (ex.StatusCode >= 500
                         ? ApiErrorCode.ServerError
