@@ -4,7 +4,7 @@ namespace EWova.Auth
 {
     internal static class Logger
     {
-        private static readonly global::EWova.Logger Debug = new global::EWova.Logger("[Ewova] Auth : ", global::EWova.Logger.Level.Warn | global::EWova.Logger.Level.Error);
+        private static readonly global::EWova.Logger Debug = new global::EWova.Logger("[Ewova] Auth : ", global::EWova.Logger.Level.Full);
 
         public static global::EWova.Logger.Level PrintLevel
         {

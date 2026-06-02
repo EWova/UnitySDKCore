@@ -11,7 +11,7 @@ using UnityEngine.Networking;
 
 namespace EWova.NetService
 {
-    public partial class AuthenticatedApiClient : IDisposable
+    public partial class AuthApiClient : IDisposable
     {
         private static readonly JsonSerializerSettings JsonSettings = new()
         {
@@ -64,7 +64,7 @@ namespace EWova.NetService
         protected void ThrowIfDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(AuthenticatedApiClient));
+                throw new ObjectDisposedException(nameof(AuthApiClient));
         }
 
         ///<exception cref="ApiException"></exception>

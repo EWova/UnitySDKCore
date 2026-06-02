@@ -20,7 +20,7 @@ namespace EWova.Auth
     /// </summary>
     public interface IAuthManager
     {
-        bool IsAuthenticated => CurrentAuthState == AuthState.Authenticated;
+        bool IsAuthenticated { get; }
         /// <summary>
         ///     當前的 TokenSet（可能為 null）
         /// </summary>

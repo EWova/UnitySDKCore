@@ -137,6 +137,9 @@ namespace EWova.Auth
 #if UNITY_EDITOR
         public MockDeepLinkReceiver MockComponent;
 #endif
+        public bool IsAuthenticated =>
+            CurrentAuthState == AuthState.Authenticated ||
+            CurrentAuthState == AuthState.RefreshingToken;
         public AuthState CurrentAuthState { get; internal set; }
         public TokenSet CurrentTokenSet { get; internal set; }
         public UserProfile AuthenticatedUserProfile { get; internal set; }
@@ -312,6 +315,7 @@ namespace EWova.Auth
                 _currentAuthorizeProcess.Nonce,
                 uiLocales);
 
+            Logger.Log($"開啟授權 URL: {authorizeUrl}");
             Application.OpenURL(authorizeUrl);
 
             return _currentAuthorizeProcess;

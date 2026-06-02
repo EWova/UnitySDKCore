@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace EWova.NetService
 {
-    public partial class AuthenticatedApiClient
+    public partial class AuthApiClient
     {
         public async UniTask<Texture2D> GetTex2D(
             string url,
