@@ -11,14 +11,14 @@ namespace EWova.NetService
             _auth = authManager;
         }
 
-        public static AuthApiClient CreateEWovaAuthClient(string baseUrl)
+        public static T CreateEWovaAuthClient<T>(string baseUrl) where T : AuthApiClient
         {
             if (EwovaAuthManager.Instance == null)
             {
                 throw new System.InvalidOperationException("EWovaAuthManager instance is not initialized. Please initialize it before creating AuthenticatedApiClient.");
             }
 
-            return new AuthApiClient(EwovaAuthManager.Instance, baseUrl);
+            return (T)System.Activator.CreateInstance(typeof(T), EwovaAuthManager.Instance, baseUrl);
         }
 
         private readonly Logger _logger;
