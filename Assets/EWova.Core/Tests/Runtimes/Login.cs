@@ -19,10 +19,10 @@ namespace EWova.Core.Tests
                 return;
             }
 
-            _loginProcess = auth.ProcessAuthorizationCodeCallback();
+            _loginProcess = auth.AuthorizeViaBrowser();
             _loginProcess.OnCompleted += () =>
             {
-                Debug.Log($"Login 處理完成. 驗證者身分 {auth.AuthenticatedUserProfile?.Name}.");
+                Debug.Log($"Login 處理完成. 驗證者身分 {auth.CurrentUser?.Name}.");
                 _loginProcess = null;
             };
             _loginProcess.OnCancelled += () =>
@@ -63,7 +63,7 @@ namespace EWova.Core.Tests
                 Debug.LogWarning("User is not authenticated.");
                 return;
             }
-            auth.ClearTokenSet();
+            auth.Logout();
             Debug.Log("User logged out.");
         }
     }

@@ -1,11 +1,8 @@
-using EWova.Auth;
-
 using System;
 using System.Collections.Generic;
 
-namespace EWova
+namespace EWova.Auth
 {
-
     public class UserProfile
     {
         /// <summary>

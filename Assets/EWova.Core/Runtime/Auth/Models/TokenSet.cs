@@ -1,8 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 
 using UnityEngine.Scripting;
 
@@ -24,9 +20,13 @@ namespace EWova.Auth
 
         /// <summary>access_token 的絕對過期時間（UTC）</summary>
         public DateTime ExpiresAt { get; set; }
-
+        /// <summary>
+        /// access_token 的剩餘有效時間（秒）。當剩餘時間小於等於 0 時，表示 access_token 已過期。
+        /// </summary>
+        public TimeSpan ExpiresIn => ExpiresAt - DateTime.UtcNow;
         /// <summary>refresh_token 的絕對過期時間（UTC）。若 AS 未提供則為 DateTime.MaxValue</summary>
         public DateTime RefreshExpiresAt { get; set; }
+
 
         /// <summary>access_token 是否已過期（提前 30 秒視為過期，留緩衝）</summary>
         public bool IsAccessTokenExpired => DateTime.UtcNow >= ExpiresAt.AddSeconds(-30);

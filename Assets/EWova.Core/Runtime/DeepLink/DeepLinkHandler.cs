@@ -1,4 +1,6 @@
-#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+//#define SUPPORT_WIN_DEEP_LINKING
+
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && SUPPORT_WIN_DEEP_LINKING
 using EWova.DeepLink.Win;
 #endif
 
@@ -14,10 +16,7 @@ namespace EWova.DeepLink
         // 目前使用 Case-insensitive 來比較 Scheme，強烈建議將所有 Scheme 都使用小寫字母
         private const StringComparison SchemeStringComparison = StringComparison.OrdinalIgnoreCase;
 
-        public static Logger Debug = new("DeepLink", Logger.Level.Full);
-        public void Log(object msg) => Debug.Log($"[{Scheme}://] {msg}");
-        public void LogWarning(object msg) => Debug.Warn($"[{Scheme}://] {msg}");
-        public void LogError(object msg) => Debug.Err($"[{Scheme}://] {msg}");
+        public static Logger Logger = new("DeepLink", Logger.Level.Full);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void AfterAssembliesLoaded()
@@ -81,7 +80,7 @@ namespace EWova.DeepLink
             if (scheme == null)
                 return;
 
-#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && SUPPORT_WIN_DEEP_LINKING
             WindowsDeepLinking.Initialize(scheme);
             WindowsDeepLinking.DeepLinkActivated += OnDeepLinkActivated;
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
@@ -97,7 +96,7 @@ namespace EWova.DeepLink
             if (!m_isEventActive)
                 return;
 
-#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && SUPPORT_WIN_DEEP_LINKING
             WindowsDeepLinking.DeepLinkActivated -= OnDeepLinkActivated;
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
             UnityEngine.Application.deepLinkActivated -= OnDeepLinkActivated;
@@ -112,11 +111,14 @@ namespace EWova.DeepLink
 
             if (!IsCurrentPlatformSupport || string.IsNullOrEmpty(scheme))
             {
-                Debug.Warn($"Current platform does not support deep linking. Scheme '{scheme}' will not be registered.");
+                if (Logger.WarnEnabled)
+                    Logger.Warn($"Current platform does not support deep linking. Scheme '{scheme}' will not be registered.");
                 return DeepLinkHandler.Dummy;
             }
 
-            Debug.Log($"Registry deep link scheme: {scheme}");
+            if (Logger.InfoEnabled)
+                Logger.Info($"Registry deep link scheme: {scheme}");
+
             if (!s_schemeNamePool.TryGetValue(scheme, out DeepLinkHandler handler))
             {
                 handler = new DeepLinkHandler(scheme);
@@ -130,7 +132,7 @@ namespace EWova.DeepLink
             get
             {
 
-#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1) && SUPPORT_WIN_DEEP_LINKING
                 return true;
 #elif UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
                 return true;
@@ -160,7 +162,7 @@ namespace EWova.DeepLink
 
         private void OnDeepLinkActivated(string uriText)
         {
-            Log($"OnDeepLinkActivated: {uriText}");
+            Logger.Info($"[{Scheme}://] OnDeepLinkActivated: {uriText}");
 
             if (string.IsNullOrEmpty(uriText))
             {

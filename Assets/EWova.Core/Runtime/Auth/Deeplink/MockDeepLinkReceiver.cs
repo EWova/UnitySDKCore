@@ -74,13 +74,15 @@ namespace EWova.Auth
 
             if (string.IsNullOrEmpty(AccessToken))
             {
-                Logger.Err("錯誤的 AccessToken，可以到 admin.ewova 找 cookie oidc.user:https://auth.ewova.dev:admin-portal 取得 access_token");
+                if (EwovaAuthManager.Logger.ErrorEnabled)
+                    EwovaAuthManager.Logger.Err("錯誤的 AccessToken，可以到 admin.ewova 找 cookie oidc.user:https://auth.ewova.dev:admin-portal 取得 access_token");
                 error = true;
             }
 
             if (string.IsNullOrEmpty(AppId))
             {
-                Logger.Err("錯誤的 AppId，請選擇你要測試的軟體 https://admin.ewova.dev/apps");
+                if (EwovaAuthManager.Logger.ErrorEnabled)
+                    EwovaAuthManager.Logger.Err("錯誤的 AppId，請選擇你要測試的軟體 https://admin.ewova.dev/apps");
                 error = true;
             }
 
@@ -90,7 +92,7 @@ namespace EWova.Auth
             res = new LaunchTicketResponse();
 
             // get reflect object 
-            var _oidcAuth = EwovaAuthManager.Instance._tokenService;
+            var _oidcAuth = EwovaAuthManager.Instance.TokenService;
             try
             {
                 res = await _oidcAuth.CreateLaunchTicketAsync(AccessToken, AppId);
@@ -98,12 +100,18 @@ namespace EWova.Auth
             }
             catch (TokenEndpointException ex)
             {
-                Logger.Err($"取得 launch ticket TokenEndpointException 失敗: {ex.Error} - {ex.Message}");
+                if (EwovaAuthManager.Logger.ErrorEnabled)
+                    EwovaAuthManager.Logger.Err($"取得 launch ticket TokenEndpointException 失敗: {ex}");
+
+                UnityEngine.Debug.LogException(ex);
                 return;
             }
             catch (Exception ex)
             {
-                Logger.Err($"取得 launch ticket 失敗: {ex}");
+                if (EwovaAuthManager.Logger.ErrorEnabled)
+                    EwovaAuthManager.Logger.Err($"取得 launch ticket 失敗: {ex}");
+
+                UnityEngine.Debug.LogException(ex);
                 return;
             }
         }

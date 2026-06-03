@@ -13,6 +13,31 @@ namespace EWova.NetService
 {
     public partial class AuthApiClient : IDisposable
     {
+        private struct RequestItem : IDisposable
+        {
+            public RequestItem(int index, RequestHelper requestHelper)
+            {
+                IsDisposed = false;
+                Index = index;
+                Helper = requestHelper;
+                CreateAt = UnityEngine.Time.realtimeSinceStartup;
+                DisposeAt = default;
+            }
+            public bool IsDisposed { get; private set; }
+            public readonly int Index;
+            public readonly RequestHelper Helper;
+            public readonly float CreateAt;
+            public float DisposeAt { get; private set; }
+            public readonly TimeSpan ElapsedTime => TimeSpan.FromSeconds((IsDisposed ? DisposeAt : UnityEngine.Time.realtimeSinceStartup) - CreateAt);
+            public void Dispose()
+            {
+                if (IsDisposed)
+                    return;
+                IsDisposed = true;
+                DisposeAt = UnityEngine.Time.realtimeSinceStartup;
+            }
+        }
+
         private static readonly JsonSerializerSettings JsonSettings = new()
         {
             NullValueHandling = NullValueHandling.Ignore
@@ -144,29 +169,46 @@ namespace EWova.NetService
             object body,
             CancellationToken token)
         {
-            var req = CreateRequest(endpoint, method, body);
-
+            using var req = CreateRequest(endpoint, method, body);
             ResponseHelper rsp = null;
-
             try
             {
+                if (_logger.InfoEnabled)
+                {
+                    var detail = new { req.Helper.Body, req.Helper.Headers };
+                    _logger.Info($"{endpoint} {req.Index} {method} Request:{JsonConvert.SerializeObject(detail, Formatting.None, JsonSettings)}");
+                }
+
                 rsp = await RestClient
-                    .Request(req)
+                    .Request(req.Helper)
                     .AsUniTask(token);
 
                 var text = rsp.Text;
 
                 if (typeof(T) == typeof(string))
+                {
+                    if (_logger.InfoEnabled)
+                        _logger.Info($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:{text}");
                     return (T)(object)text;
+                }
 
                 if (string.IsNullOrWhiteSpace(text))
+                {
+                    if (_logger.InfoEnabled)
+                        _logger.Info($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response");
                     return default;
+                }
 
-                return JsonConvert.DeserializeObject<T>(text, JsonSettings);
+                var desObj = JsonConvert.DeserializeObject<T>(text, JsonSettings);
+                if (_logger.InfoEnabled)
+                    _logger.Info($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:{text}");
+                return desObj;
             }
             catch (RequestException ex)
             {
-                _logger.Exce($"HTTP Error: {ex.Response}", ex);
+                if (_logger.ErrorEnabled)
+                    _logger.Err($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:Exception {ex}");
+                UnityEngine.Debug.LogException(ex);
 
                 var statusCode = (HttpStatusCode)ex.StatusCode;
 
@@ -187,7 +229,9 @@ namespace EWova.NetService
             }
             catch (JsonException ex)
             {
-                _logger.Exce($"Deserialization Error: {rsp?.Text}", ex);
+                if (_logger.ErrorEnabled)
+                    _logger.Err($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:JsonException {rsp?.Text}");
+                UnityEngine.Debug.LogException(ex);
 
                 throw new ApiException(
                     errorCode: ApiErrorCode.DeserializationError,
@@ -199,12 +243,15 @@ namespace EWova.NetService
             }
             catch (OperationCanceledException)
             {
-                _logger.Warn($"Request cancelled: {method} {endpoint}");
+                if (_logger.WarnEnabled)
+                    _logger.Warn($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:Cancelled");
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.Exce($"Unexpected Error: {ex}", ex);
+                if (_logger.ErrorEnabled)
+                    _logger.Err($"{endpoint} {req.Index} {method} Elapsed:{req.ElapsedTime.TotalMilliseconds:F0}ms Response:Unexpected {ex}");
+                UnityEngine.Debug.LogException(ex);
                 throw;
             }
         }
@@ -249,7 +296,6 @@ namespace EWova.NetService
             }
             catch (OperationCanceledException)
             {
-                _logger.Warn($"Request cancelled: {method} {endpoint}");
                 throw;
             }
             catch (Exception ex)
@@ -257,8 +303,6 @@ namespace EWova.NetService
                 // UnityWebRequest error
                 var code = request.responseCode;
                 var response = request.downloadHandler?.text;
-
-                _logger.Exce($"UnityWebRequest Error: {response}", ex);
 
                 throw new ApiException(
                     errorCode: code >= 500 ? ApiErrorCode.ServerError : ApiErrorCode.Unknown,
@@ -279,8 +323,8 @@ namespace EWova.NetService
         {
             var headers = new Dictionary<string, string>(DefaultHeaders);
 
-            if (IsUserAuthenticated)
-                headers[key: "Authorization"] = $"Bearer {AccessToken}";
+            if (TryGetValidAccessToken(out string accessToken))
+                headers[key: "Authorization"] = $"Bearer {accessToken}";
 
             foreach (var kv in AdditionalHeaders)
                 headers[kv.Key] = kv.Value;
@@ -295,28 +339,31 @@ namespace EWova.NetService
             return headers;
         }
 
-        private RequestHelper CreateRequest(
+        private int _requestIndex = 0;
+        private RequestItem CreateRequest(
             string endpoint,
             string method,
-            object body = null)
+            object body = null,
+            bool isAbsoluteUrl = false)
         {
             var headers = CreateHeader();
 
-            if (_logger.PrintLevel.HasFlag(Logger.Level.Info))
-                _logger.Log($"Creating Request: {method} {endpoint} with body: {(body != null ? JsonConvert.SerializeObject(body, JsonSettings) : "null")} with headers: {JsonConvert.SerializeObject(headers)}");
-
-            return new RequestHelper
-            {
-                Uri = BuildUrl(endpoint),
-                Method = method,
-                Headers = headers,
-                Body = body,
-            };
+            return new RequestItem
+            (
+                index: _requestIndex++,
+                requestHelper: new RequestHelper
+                {
+                    Uri = isAbsoluteUrl ? endpoint : BuildUrl(endpoint),
+                    Method = method,
+                    Headers = headers,
+                    Body = body,
+                }
+            );
         }
 
         private string BuildUrl(string endpoint)
         {
-            return $"{_baseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+            return $"{_baseUrl}/{endpoint.TrimStart('/')}";
         }
     }
 }

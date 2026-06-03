@@ -15,45 +15,52 @@ namespace EWova
         [Flags]
         public enum Level
         {
-            Info = 1,
-            Warn = 2,
-            Error = 4,
-
             None = 0,
+            Info = 1 << 0,
+            Warn = 1 << 1,
+            Error = 1 << 2,
+
             Full = Info | Warn | Error,
         }
-        public Level PrintLevel;
-        [NonSerialized] public string Prefix = "";
 
-        public Logger(string prefix = "", Level printLevel = Level.Warn | Level.Error)
+        public Level PrintLevel;
+
+        [NonSerialized]
+        public string Prefix = "";
+
+        public bool InfoEnabled =>
+            (PrintLevel & Level.Info) != 0;
+
+        public bool WarnEnabled =>
+            (PrintLevel & Level.Warn) != 0;
+
+        public bool ErrorEnabled =>
+            (PrintLevel & Level.Error) != 0;
+
+        public Logger(
+            string prefix = "",
+            Level printLevel = Level.Warn | Level.Error)
         {
             Prefix = prefix;
             PrintLevel = printLevel;
         }
 
         [HideInCallstack]
-        public void Log(object msg)
+        public void Info(object msg)
         {
-            if (PrintLevel.HasFlag(Level.Info))
-                UnityEngine.Debug.Log(Prefix + msg);
+            Debug.Log(Prefix + msg);
         }
+
         [HideInCallstack]
         public void Warn(object msg)
         {
-            if (PrintLevel.HasFlag(Level.Warn))
-                UnityEngine.Debug.LogWarning(Prefix + msg);
+            Debug.LogWarning(Prefix + msg);
         }
+
         [HideInCallstack]
         public void Err(object msg)
         {
-            if (PrintLevel.HasFlag(Level.Error))
-                UnityEngine.Debug.LogError(Prefix + msg);
-        }
-        [HideInCallstack]
-        public void Exce(object msg, Exception ex)
-        {
-            UnityEngine.Debug.LogError(Prefix + msg);
-            UnityEngine.Debug.LogException(ex);
+            Debug.LogError(Prefix + msg);
         }
     }
 }
