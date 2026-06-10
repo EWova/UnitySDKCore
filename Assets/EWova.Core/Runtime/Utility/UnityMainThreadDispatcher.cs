@@ -10,7 +10,7 @@ namespace EWova
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RuntimeInitializeOnLoadBefore()
         {
-            var go = new GameObject("[EWova] MainThread Dispatcher");
+            var go = new GameObject("[EWova]MainThreadDispatcher");
             DontDestroyOnLoad(go);
             _instance = go.AddComponent<UnityMainThreadDispatcher>();
 
