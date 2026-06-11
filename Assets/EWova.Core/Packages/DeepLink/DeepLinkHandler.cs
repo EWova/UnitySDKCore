@@ -11,7 +11,9 @@ namespace EWova.DeepLink
 
         public static DeepLinkHandler Dummy = new DeepLinkHandler(null);
         public static DeepLinkHandler Default { get; private set; }
-        public static bool IsSupported => Default != null && !Default.IsDummy;
+        public static bool IsSupported => s_defaultProvider != null;
+
+        private static IDeepLinkProvider s_defaultProvider;
 
         public readonly string Scheme;
 
@@ -24,7 +26,6 @@ namespace EWova.DeepLink
 
         private Action<DeepLinkHandler> m_onActivated;
 
-        private IDeepLinkProvider m_provider;
 
         private bool m_initialized;
 
@@ -35,8 +36,9 @@ namespace EWova.DeepLink
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void Init()
         {
-            var config = DeepLinkConfig.LoadOrDefault();
+            s_defaultProvider = DeepLinkProviderDiscovery.Find();
 
+            var config = DeepLinkConfig.LoadOrDefault();
             string err = null;
             if (config == null || !config.VerifyFormat(out err))
             {
@@ -65,13 +67,11 @@ namespace EWova.DeepLink
             if (scheme == null)
                 return;
 
-            m_provider = DeepLinkProviderDiscovery.Find();
-
-            if (m_provider == null)
+            if (s_defaultProvider == null)
                 return;
 
-            m_provider.Initialize(scheme);
-            m_provider.OnDeepLinkActivated += OnDeepLinkActivated;
+            s_defaultProvider.Initialize(scheme);
+            s_defaultProvider.OnDeepLinkActivated += OnDeepLinkActivated;
 
             m_initialized = true;
         }

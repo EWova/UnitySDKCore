@@ -202,20 +202,15 @@ namespace EWova.Auth
             }
         }
         public bool IsSupportAuthorizeViaDeepLink
-        {
-            get { return IsDeepLinkHandlerAvailable; }
-        }
+            => IsDeepLinkHandlerAvailable;
 
-        public int HistoryLimit { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-        private bool IsDeepLinkHandlerAvailable = false;
+        private bool IsDeepLinkHandlerAvailable 
+            => DeepLinkHandler.IsSupported;
 
         private void Awake()
         {
             string appScheme;
             DeepLinkHandler deepLinkHandler = null;
-
-            IsDeepLinkHandlerAvailable = DeepLinkHandler.IsSupported;
 
             deepLinkHandler = DeepLinkHandler.Default;
             appScheme = deepLinkHandler.Scheme;
@@ -239,7 +234,6 @@ namespace EWova.Auth
         }
         private void OnDestroy()
         {
-            IsDeepLinkHandlerAvailable = false;
             if (_deepLinkHandler != null)
             {
                 _deepLinkHandler.Remove(OnDeepLinkHandlerActivated);

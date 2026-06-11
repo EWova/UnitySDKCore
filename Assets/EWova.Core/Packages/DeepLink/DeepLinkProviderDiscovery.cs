@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace EWova.DeepLink
 {
@@ -38,6 +37,8 @@ namespace EWova.DeepLink
 
                 if (Activator.CreateInstance(type) is not IDeepLinkProvider provider)
                     continue;
+
+                //UnityEngine.Debug.Log($"Discovered DeepLinkProvider: {type.FullName} with priority {provider.Priority} and supported: {provider.IsSupported}");
 
                 if (!provider.IsSupported)
                     continue;

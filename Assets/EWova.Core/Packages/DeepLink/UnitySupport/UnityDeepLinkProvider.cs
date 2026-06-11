@@ -12,7 +12,7 @@ namespace EWova.DeepLink
         {
             get
             {
-#if UNITY_ANDROID || UNITY_IOS || UNITY_WSA|| UNITY_STANDALONE_OSX
+#if (UNITY_ANDROID || UNITY_IOS || UNITY_WSA|| UNITY_STANDALONE_OSX) && !UNITY_EDITOR_WIN
                 return true;
 #else
                 return false;
