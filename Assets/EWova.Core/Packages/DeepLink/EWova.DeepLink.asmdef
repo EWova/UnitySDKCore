@@ -1,10 +1,8 @@
 {
-    "name": "EWova.Networking",
-    "rootNamespace": "EWova.Networking",
+    "name": "EWova.DeepLink",
+    "rootNamespace": "EWova.DeepLink",
     "references": [
-        "GUID:0b34836ace6cdc74d8185cadaf082ad5",
-        "GUID:0a02bc77cfb4e6c4cb9fd469c8110e29",
-        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+        "GUID:0b34836ace6cdc74d8185cadaf082ad5"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

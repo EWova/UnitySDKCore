@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: -392883759, guid: 127b0bf5f7b2fbd47bae89371b5ce719, type: 3}
+  m_Script: {fileID: 11500000, guid: 3b162502acdf9754fa9730921bf8b14d, type: 3}
   m_Name: DeeplinkConfig
   m_EditorClassIdentifier: 
   MyAppScheme: example
