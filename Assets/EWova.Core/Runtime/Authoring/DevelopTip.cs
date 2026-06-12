@@ -37,17 +37,17 @@ namespace EWova.Authoring
         public static void Info(object message, UnityEngine.Object context = null)
         {
             if (IsEnabled)
-                EditorLogger.Info($"💡 {message}", context);
+                EditorLogger.InfoNoPrefix($"💡 {message}", context);
         }
         public static void Warn(object message, UnityEngine.Object context = null)
         {
             if (IsEnabled)
-                EditorLogger.Warn($"💡 {message}", context);
+                EditorLogger.WarnNoPrefix($"💡 {message}", context);
         }
         public static void Err(object message, UnityEngine.Object context = null)
         {
             if (IsEnabled)
-                EditorLogger.Err($"💡 {message}", context);
+                EditorLogger.ErrNoPrefix($"💡 {message}", context);
         }
     }
 }
