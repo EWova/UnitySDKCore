@@ -8,7 +8,6 @@ namespace EWova.Authoring
     {
         private readonly static Logger _logger = new Logger("Editor [EWova] ", LogLevel.Full);
         public static ILogSource Source => _logger;
-        public readonly static HashSet<string> Flags;
 
         [HideInCallstack]
         public static void Info(string message)
