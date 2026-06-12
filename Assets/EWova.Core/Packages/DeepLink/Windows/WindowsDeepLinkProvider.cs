@@ -7,13 +7,9 @@ namespace EWova.DeepLink.Win
     {
         public int Priority => 100;
 
-        public bool IsSupported =>
 #if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
-            true;
-#else
-            false;
-#endif
-
+        public bool IsSupported => true;
+           
         public event Action<string> OnDeepLinkActivated;
 
         public void Initialize(string scheme)
@@ -26,5 +22,11 @@ namespace EWova.DeepLink.Win
         {
             OnDeepLinkActivated?.Invoke(url);
         }
+#else
+        public bool IsSupported => false;
+        public event Action<string> OnDeepLinkActivated;
+        public void Initialize(string scheme) { }
+#endif
+
     }
 }
