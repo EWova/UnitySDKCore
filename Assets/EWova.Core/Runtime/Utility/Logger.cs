@@ -27,7 +27,6 @@ namespace EWova
     }
     public readonly struct LogEntry
     {
-
         public readonly DateTime Time;
         public readonly LogLevel Level;
         public readonly string Message;
@@ -106,28 +105,29 @@ namespace EWova
         {
             LogReceived?.Invoke(new LogEntry(time: DateTime.Now, level: level, message: msg));
         }
+
         [HideInCallstack]
-        public void Info(object msg)
+        public void Info(object msg, UnityEngine.Object context = null)
         {
-            string str = Prefix + msg.ToString();
+            string str = Prefix == null ? msg.ToString() : Prefix + msg.ToString();
             LogEntryAction(LogLevel.Info, str);
-            Debug.Log(str);
+            Debug.Log(str, context);
         }
 
         [HideInCallstack]
-        public void Warn(object msg)
+        public void Warn(object msg, UnityEngine.Object context = null)
         {
-            string str = Prefix + msg.ToString();
+            string str = Prefix == null ? msg.ToString() : Prefix + msg.ToString();
             LogEntryAction(LogLevel.Warn, str);
-            Debug.LogWarning(str);
+            Debug.LogWarning(str, context);
         }
 
         [HideInCallstack]
-        public void Err(object msg)
+        public void Err(object msg, UnityEngine.Object context = null)
         {
-            string str = Prefix + msg.ToString();
+            string str = Prefix == null ? msg.ToString() : Prefix + msg.ToString();
             LogEntryAction(LogLevel.Error, str);
-            Debug.LogError(str);
+            Debug.LogError(str, context);
         }
     }
 }

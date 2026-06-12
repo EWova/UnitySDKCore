@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEditor;
 
 namespace EWova.Authoring
@@ -32,6 +32,22 @@ namespace EWova.Authoring
             var disable = EWovaEditorPrefs.instance.GetBool(PrefKey, false);
             Menu.SetChecked(MenuPath, !disable);
             return true;
+        }
+
+        public static void Info(object message, UnityEngine.Object context = null)
+        {
+            if (IsEnabled)
+                EditorLogger.Info($"💡 {message}", context);
+        }
+        public static void Warn(object message, UnityEngine.Object context = null)
+        {
+            if (IsEnabled)
+                EditorLogger.Warn($"💡 {message}", context);
+        }
+        public static void Err(object message, UnityEngine.Object context = null)
+        {
+            if (IsEnabled)
+                EditorLogger.Err($"💡 {message}", context);
         }
     }
 }
