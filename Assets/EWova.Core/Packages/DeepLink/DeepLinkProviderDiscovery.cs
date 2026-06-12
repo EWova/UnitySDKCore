@@ -29,16 +29,12 @@ namespace EWova.DeepLink
 
             foreach (var type in providers)
             {
-                var attr = type.GetCustomAttributes(typeof(DeepLinkProviderAttribute), false)
-                               .FirstOrDefault() as DeepLinkProviderAttribute;
-
-                if (attr == null)
+                if (type.GetCustomAttributes(typeof(DeepLinkProviderAttribute), false)
+                               .FirstOrDefault() is not DeepLinkProviderAttribute attr)
                     continue;
 
                 if (Activator.CreateInstance(type) is not IDeepLinkProvider provider)
                     continue;
-
-                //UnityEngine.Debug.Log($"Discovered DeepLinkProvider: {type.FullName} with priority {provider.Priority} and supported: {provider.IsSupported}");
 
                 if (!provider.IsSupported)
                     continue;

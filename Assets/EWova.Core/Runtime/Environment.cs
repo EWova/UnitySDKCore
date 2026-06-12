@@ -2,19 +2,23 @@ namespace EWova
 {
     public enum DeploymentMode
     {
-        Development,
-        Production
+        Production = 0,
+        Development = 1,
     }
-    /// <summary>
-    /// EWova 設定環境，為確保初始化正確，請在 RuntimeInitializeLoadType.BeforeSceneLoad 前完成初始化
-    /// </summary>
+
     public static class Environment
     {
-        public static DeploymentMode DeploymentMode { get; set; }
+        public static DeploymentMode DeploymentMode
+        {
+            get
+            {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            = DeploymentMode.Development;
+                int mode = Authoring.EWovaEditorPrefs.instance.GetInt("Env_EditorDeploymentMode", 0);
+                return (DeploymentMode)mode;
 #else
-            = DeploymentMode.Production;
+                return DeploymentMode.Production;
 #endif
+            }
+        }
     }
 }
