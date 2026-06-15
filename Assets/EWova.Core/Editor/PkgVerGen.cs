@@ -8,6 +8,8 @@ namespace EWova.Core.Editor
     [InitializeOnLoad]
     internal static class PkgVerGen
     {
+        static PkgVerGen() { }
+
         internal const string PackageJsonGuid = "7f3736fa8649e7841b760919810adde7";
         internal const string PackageInfoGuid = "8c02a6f5d904fab4b8da85773504b9ed";
         internal static void Generate()
