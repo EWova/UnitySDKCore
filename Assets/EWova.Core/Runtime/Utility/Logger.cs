@@ -43,6 +43,8 @@ namespace EWova
 
     public sealed class Logger : ILogSource
     {
+        internal static Logger Default { get; } = new Logger("[EWova] ");
+
         public string Prefix { get; set; } = "";
         public LogLevel PrintLevel { get; set; }
 
