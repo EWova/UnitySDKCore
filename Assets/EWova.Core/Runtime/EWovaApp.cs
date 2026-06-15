@@ -17,6 +17,8 @@ namespace EWova
 
     public static class EWovaApp
     {
+        public const string Scheme = "ewova";
+
         private static bool _subscribed;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
@@ -34,7 +36,7 @@ namespace EWova
         /// <summary>
         /// EWova 元宇宙應用程式的 Deep Link URL
         /// </summary>
-        public static string AppDeepLink = $"{EWova.ApplicationScheme}://";
+        public static string AppDeepLink = $"{Scheme}://";
 
         public static void LaunchViaDeepLink(
             LaunchViaDeepLinkOption option = LaunchViaDeepLinkOption.Default,
@@ -54,7 +56,7 @@ namespace EWova
 
             var builder = new UriBuilder
             {
-                Scheme = EWova.ApplicationScheme,
+                Scheme = Scheme,
                 Host = ""
             };
 
