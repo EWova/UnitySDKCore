@@ -1,15 +1,20 @@
-// Windows .Net Framework 4.6 以上版本才支援註冊表操作
-#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
-
 using System;
 using System.IO;
 
 using UnityEngine;
-
 namespace EWova.DeepLink.Win
 {
     public static class WindowsDeepLinking
     {
+        // Windows .Net Framework 4.6 以上版本才支援註冊表操作
+#if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AfterSceneLoad()
+        {
+            if (!WindowsDeepLinkingCore.IsInitialized) return;
+            WindowsDeepLinkingCore.ProcessCommandLineArgs();
+        }
+
         public static event Action<string> OnDeepLinkActivated
         {
             add => WindowsDeepLinkingCore.OnDeepLinkActivated += value;
@@ -44,13 +49,6 @@ namespace EWova.DeepLink.Win
             Application.focusChanged += OnApplicationFocus;
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void AfterSceneLoad()
-        {
-            if (!WindowsDeepLinkingCore.IsInitialized) return;
-            WindowsDeepLinkingCore.ProcessCommandLineArgs();
-        }
-
         public static void ResetState()
         {
             Application.focusChanged -= OnApplicationFocus;
@@ -62,6 +60,15 @@ namespace EWova.DeepLink.Win
             if (!hasFocus) return;
             WindowsDeepLinkingCore.CheckRegistryForDeepLink();
         }
+#else
+
+#pragma warning disable CS0067
+        public static event Action<string> OnDeepLinkActivated;
+        public static Func<string> OverrideTargetExecutablePath;
+        public static Func<string> OverrideWmiQuery;
+        public static void ResetState() { }
+#pragma warning restore CS0067
+
+#endif
     }
 }
-#endif

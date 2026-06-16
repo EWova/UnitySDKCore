@@ -1,4 +1,4 @@
-#if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+#if UNITY_EDITOR_WIN && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
 using UnityEditor;
 
 namespace EWova.DeepLink.Win.Editor
@@ -19,6 +19,7 @@ namespace EWova.DeepLink.Win.Editor
                 return $"Select * from Win32_Process Where ProcessId = {currentPid}";
             };
 
+            EditorApplication.playModeStateChanged -= PlayModeStateChanged;
             EditorApplication.playModeStateChanged += PlayModeStateChanged;
         }
 
