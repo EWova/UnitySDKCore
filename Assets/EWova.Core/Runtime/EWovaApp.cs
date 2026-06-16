@@ -7,12 +7,16 @@ using UnityEngine;
 
 namespace EWova
 {
+    [Flags]
     public enum LaunchViaDeepLinkOption
     {
-        Default = 0,
-        JustLaunch = 1,
-        BackToWorld = 2,
-        BackToWorldAndSpace = 3,
+        JustLaunch = 0,
+
+        BackToWorld = 1 << 0,
+
+        BackToWorldAndSpace = BackToWorld | 1 << 1,
+
+        Default = BackToWorldAndSpace
     }
 
     public static class EWovaApp
@@ -38,6 +42,47 @@ namespace EWova
         /// </summary>
         public static string AppDeepLink = $"{Scheme}://";
 
+        public static string GetDeepLink(
+            LaunchViaDeepLinkOption option,
+            IReadOnlyDictionary<string, string> extraQuery = null)
+        {
+            var builder = new UriBuilder
+            {
+                Scheme = Scheme,
+                Host = string.Empty
+            };
+
+            Dictionary<string, string> queryDict = extraQuery == null ? new() : new(extraQuery);
+
+            if (option == LaunchViaDeepLinkOption.BackToWorld ||
+                option == LaunchViaDeepLinkOption.BackToWorldAndSpace)
+            {
+                if (LaunchContext?.WorldGuid is Guid worldGuid)
+                {
+                    queryDict[EWovaAppLaunchContext.WorldIdKey] =
+                        worldGuid.ToString();
+                    if (option == LaunchViaDeepLinkOption.BackToWorldAndSpace &&
+                        LaunchContext.SpaceInstanceIndex is int spaceId)
+                    {
+                        queryDict[EWovaAppLaunchContext.SpaceIdKey] =
+                            spaceId.ToString();
+                    }
+                }
+            }
+
+            if (queryDict.Count > 0)
+            {
+                var query = HttpUtility.ParseQueryString(string.Empty);
+                foreach (var kv in queryDict)
+                {
+                    query[kv.Key] = kv.Value;
+                }
+                builder.Query = query.ToString();
+            }
+
+            return builder.ToString();
+        }
+
         public static void LaunchViaDeepLink(
             LaunchViaDeepLinkOption option = LaunchViaDeepLinkOption.Default,
             IReadOnlyDictionary<string, string> extraQuery = null)
@@ -54,51 +99,7 @@ namespace EWova
                 }
             }
 
-            var builder = new UriBuilder
-            {
-                Scheme = Scheme,
-                Host = ""
-            };
-
-            if (option != LaunchViaDeepLinkOption.JustLaunch)
-            {
-                var query = HttpUtility.ParseQueryString(builder.Query);
-
-                switch (option)
-                {
-                    case LaunchViaDeepLinkOption.BackToWorld:
-                        if (LaunchContext != null && LaunchContext.WorldGuid.HasValue)
-                        {
-                            query[EWovaAppLaunchContext.WorldIdKey] = LaunchContext.WorldGuid.Value.ToString();
-                        }
-                        else
-                        {
-                            if (Logger.Default.InfoEnabled)
-                                Logger.Default.Info("你沒有從 EWova 元宇宙應用程式啟動到或跳轉到此應用程式，將會單純啟動此應用程式而不會回到任何課程世界");
-                        }
-                        break;
-                    case LaunchViaDeepLinkOption.BackToWorldAndSpace:
-                        if (LaunchContext != null && LaunchContext.WorldGuid.HasValue)
-                        {
-                            query[EWovaAppLaunchContext.WorldIdKey] = LaunchContext.WorldGuid.Value.ToString();
-
-                            if (LaunchContext.SpaceInstanceIndex.HasValue)
-                            {
-                                query[EWovaAppLaunchContext.SpaceIdKey] = LaunchContext.SpaceInstanceIndex.Value.ToString();
-                            }
-                        }
-                        else
-                        {
-                            if (Logger.Default.InfoEnabled)
-                                Logger.Default.Info("你沒有從 EWova 元宇宙應用程式啟動到或跳轉到此應用程式，將會單純啟動此應用程式而不會回到任何課程世界或空間");
-                        }
-                        break;
-                }
-
-                builder.Query = query.ToString();
-            }
-
-            Application.OpenURL(builder.ToString());
+            Application.OpenURL(GetDeepLink(option, extraQuery));
         }
 
         private static void LoadFromDeepLink(DeepLinkHandler handler)
