@@ -26,9 +26,6 @@ namespace EWova.DeepLink
 
         private Action<DeepLinkHandler> m_onActivated;
 
-
-        private bool m_initialized;
-
         private const StringComparison SchemeCompare = StringComparison.OrdinalIgnoreCase;
 
         public static Logger Logger = new("[EWova]DeepLink ", LogLevel.Full);
@@ -72,8 +69,6 @@ namespace EWova.DeepLink
 
             s_defaultProvider.Initialize(scheme);
             s_defaultProvider.OnDeepLinkActivated += OnDeepLinkActivated;
-
-            m_initialized = true;
         }
 
         public void ContinueWith(Action<DeepLinkHandler> action)
