@@ -119,7 +119,7 @@ namespace EWova
                     context.SpaceInstanceIndex = spaceInstanceIndex;
                 }
 
-                Logger.Default.Info("從 Deep Link 啟動，LaunchContext: " + $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}");
+                Logger.Default.Info("透過 EWova App 使用 DeepLink 穿越來，LaunchContext: " + $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}");
                 LaunchContext = context;
             }
         }
