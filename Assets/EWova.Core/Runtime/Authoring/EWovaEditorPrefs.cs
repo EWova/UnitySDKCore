@@ -51,30 +51,30 @@ namespace EWova.Authoring
             }
         }
 
-        private string TryGetValue(string key, object defaultValue = null)
+        private static string TryGetValue(string key, object defaultValue = null)
         {
-            if (_prefsDictionary.TryGetValue(key, out var value))
+            if (instance._prefsDictionary.TryGetValue(key, out var value))
             {
                 return value;
             }
             return defaultValue?.ToString();
         }
 
-        private void SetValue(string key, string stringValue)
+        private static void SetValue(string key, string stringValue)
         {
-            _prefsDictionary[key] = stringValue;
-            Save(true);
+            instance._prefsDictionary[key] = stringValue;
+            instance.Save(true);
         }
 
-        public string GetString(string key, string defaultValue = null) => TryGetValue(key, defaultValue);
-        public int GetInt(string key, int defaultValue = 0) => int.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
-        public float GetFloat(string key, float defaultValue = 0f) => float.TryParse(TryGetValue(key, defaultValue), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
-        public bool GetBool(string key, bool defaultValue = false) => bool.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
+        public static string GetString(string key, string defaultValue = null) => TryGetValue(key, defaultValue);
+        public static int GetInt(string key, int defaultValue = 0) => int.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
+        public static float GetFloat(string key, float defaultValue = 0f) => float.TryParse(TryGetValue(key, defaultValue), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
+        public static bool GetBool(string key, bool defaultValue = false) => bool.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
 
-        public void SetString(string key, string value) => SetValue(key, value);
-        public void SetInt(string key, int value) => SetValue(key, value.ToString());
-        public void SetFloat(string key, float value) => SetValue(key, value.ToString(CultureInfo.InvariantCulture));
-        public void SetBool(string key, bool value) => SetValue(key, value.ToString());
+        public static void SetString(string key, string value) => SetValue(key, value);
+        public static void SetInt(string key, int value) => SetValue(key, value.ToString());
+        public static void SetFloat(string key, float value) => SetValue(key, value.ToString(CultureInfo.InvariantCulture));
+        public static void SetBool(string key, bool value) => SetValue(key, value.ToString());
     }
 }
 #endif

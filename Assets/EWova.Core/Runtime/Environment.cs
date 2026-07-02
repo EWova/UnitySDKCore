@@ -13,7 +13,7 @@ namespace EWova
             get
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                int mode = Authoring.EWovaEditorPrefs.instance.GetInt(
+                int mode = Authoring.EWovaEditorPrefs.GetInt(
                     "Env_EditorDeploymentMode",
                     (int)DeploymentMode.Development);
                 return (DeploymentMode)mode;
@@ -23,6 +23,6 @@ namespace EWova
             }
         }
 
-        
+
     }
 }

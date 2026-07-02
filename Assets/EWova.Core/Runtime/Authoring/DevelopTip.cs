@@ -5,7 +5,7 @@ namespace EWova.Authoring
 {
     public static class DevelopTip
     {
-        public static bool IsEnabled => !EWovaEditorPrefs.instance.GetBool(PrefKey, false);
+        public static bool IsEnabled => !EWovaEditorPrefs.GetBool(PrefKey, false);
 
         private const string MenuPath = "EWova/Editor/Develop Tip";
         private const string PrefKey = "Env_EditorDisableDevelopTip"; // 使用反向的 key，讓預設值為 false 時功能是關閉的
@@ -13,9 +13,9 @@ namespace EWova.Authoring
         [MenuItem(MenuPath, false, 1)]
         private static void Switch()
         {
-            var disable = EWovaEditorPrefs.instance.GetBool(PrefKey, false);
+            var disable = EWovaEditorPrefs.GetBool(PrefKey, false);
             var setTo = !disable;
-            EWovaEditorPrefs.instance.SetBool(PrefKey, setTo);
+            EWovaEditorPrefs.SetBool(PrefKey, setTo);
 
             if (setTo)
             {
@@ -29,7 +29,7 @@ namespace EWova.Authoring
         [MenuItem(MenuPath, true)]
         private static bool SwitchValidate()
         {
-            var disable = EWovaEditorPrefs.instance.GetBool(PrefKey, false);
+            var disable = EWovaEditorPrefs.GetBool(PrefKey, false);
             Menu.SetChecked(MenuPath, !disable);
             return true;
         }
