@@ -109,14 +109,16 @@ namespace EWova.Auth
         private TokenSet _currentTokens;
         private AuthorizeProcess _currentAuthorizeProcess;
         private CancellationTokenSource _renewLoopCts;
-        private readonly CancellationTokenSource _lifecycleCts = new();
-        private DeepLinkHandler _deepLinkHandler;
-        private readonly EWovaAuthConfig _authConfig;
-        private readonly TokenService _tokenService;
-        private TokenSet CurrentTokens
+
+        protected readonly CancellationTokenSource _lifecycleCts = new();
+        protected DeepLinkHandler _deepLinkHandler;
+        protected readonly TokenService _tokenService;
+        protected readonly EWovaAuthConfig _authConfig;
+
+        protected TokenSet CurrentTokens
         {
             get => _currentTokens;
-            set
+            private set
             {
                 if (ReferenceEquals(_currentTokens, value))
                     return;

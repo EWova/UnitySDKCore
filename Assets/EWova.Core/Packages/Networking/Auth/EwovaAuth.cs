@@ -2,9 +2,7 @@ namespace EWova.Auth
 {
     public class EWovaAuth : AuthProvider
     {
-        internal EWovaAuth(EWovaAuthConfig authConfig) : base(authConfig)
-        {
-        }
+        internal EWovaAuth() : base(null) { }
 
         public static EWovaAuth Instance
         {
