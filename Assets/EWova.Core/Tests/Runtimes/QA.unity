@@ -592,69 +592,6 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
---- !u!1 &1409683665
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1409683668}
-  - component: {fileID: 1409683667}
-  - component: {fileID: 1409683669}
-  m_Layer: 0
-  m_Name: '[EWova]AuthManager'
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1409683667
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1409683665}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d45fa1de9e720b347b80adb82d7c0c29, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &1409683668
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1409683665}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1409683669
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1409683665}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7f118534e70a564d8c04aca6bbfd69d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _deeplink: 
-  AccessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjU3OGYwMDI4LTljOGItNDkxMS1iZDc1LTc5MmRmMGViZjA2YyJ9.eyJqdGkiOiJWeG1hZ050SnpZTFRIenA1R1p6VlgiLCJzdWIiOiIwMTlkNDE3Yi04YzI5LTdlYzctOTdkMC1mMTViNDA5NDAwZTMiLCJpYXQiOjE3ODA3MDEzMjMsImV4cCI6MTc4MDcwNDkyMywic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCByb2xlcyIsImNsaWVudF9pZCI6ImFkbWluLXBvcnRhbCIsImlzcyI6Imh0dHBzOi8vYXV0aC5ld292YS5kZXYiLCJhdWQiOiJodHRwczovL2F1dGguZXdvdmEuZGV2In0.fRYBob9ywgtPn1hH_JLe5orU4ggUdtwr24YF6xDjcMt6UGa-S10kaJK9L1uyPEKger3WiJpQR91LiIz6Pw346Iw2hdBKH4yLH0ua0QPNAT-sDt_xJbSGIg4mFrZ_LzYrNMjiB_0tl-EhlbLv6ZV8kYXYCquZ7hpC8ibV_002fB2C4WOWOHG54XFb5zZSionISfoU33RwPs05xeGXL0smi27s_aonCHV-Q09MK6NSYcNsd7QnlmQxCriojqByzhn9dYboOCULfqVrqCStZprhm8PdhXLbR7yyw-e19Mba151F2ueoFUGTKImEI2GybWDSUI6uuD7C6lt2M_kAP5PItQ
-  AppId: 019d417e-29e6-7832-9ca8-7c3469d77991
-  res:
-    launchTicket: 
-    deepLink: 
 --- !u!1 &1495923244
 GameObject:
   m_ObjectHideFlags: 0
@@ -822,7 +759,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 300586858}
   - {fileID: 1405688330}
-  - {fileID: 1409683668}
   - {fileID: 1495923246}
   - {fileID: 2055695503}
   - {fileID: 1251213453}
