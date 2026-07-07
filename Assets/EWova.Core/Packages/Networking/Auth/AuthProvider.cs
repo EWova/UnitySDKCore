@@ -12,8 +12,10 @@ using UnityEngine;
 
 namespace EWova.Auth
 {
-    [DefaultExecutionOrder(-1000)]
-    public partial class EwovaAuthManager : MonoBehaviour, IAuthManager
+    /// <summary>
+    /// 提供 EWova 驗證流程的基底類別。繼承時必須透過建構子傳入 <see cref="EWovaAuthConfig"/> 才能完成初始化。
+    /// </summary>
+    public abstract class AuthProvider : IAuthManager, IDisposable
     {
         /// <summary>
         /// 請在 RuntimeInitializeLoadType.BeforeSceneLoad 以前初始化
@@ -85,47 +87,9 @@ namespace EWova.Auth
             }
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void Initialize()
-        {
-            Instance = FindAnyObjectByType<EwovaAuthManager>();
-            if (Instance == null)
-            {
-                var managerObj = new GameObject("[Ewova]AuthManager ");
-                Instance = managerObj.AddComponent<EwovaAuthManager>();
-            }
-            DontDestroyOnLoad(Instance.gameObject);
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.playModeStateChanged += EditorApplication_playModeStateChanged;
-#endif
-        }
-#if UNITY_EDITOR
-        private static void EditorApplication_playModeStateChanged(UnityEditor.PlayModeStateChange obj)
-        {
-            if (obj == UnityEditor.PlayModeStateChange.ExitingPlayMode)
-            {
-                if (Instance != null) Destroy(Instance.gameObject);
-                Instance = null;
-                UnityEditor.EditorApplication.playModeStateChanged -= EditorApplication_playModeStateChanged;
-            }
-        }
-#endif
-
-        public static EwovaAuthManager Instance
-        {
-            get
-            {
-                if (!Application.isPlaying)
-                    throw new InvalidOperationException("EwovaAuthManager 取得失敗，請在 Play 模式下使用。");
-                return _instance;
-            }
-            private set => _instance = value;
-        }
-
-        private static EwovaAuthManager _instance;
-        internal readonly static Logger InternalLogger = new("[Ewova]AuthManager ", LogLevel.Full);
-        public static ILogSource Logger => InternalLogger;
-        public static LogLevel LoggerLevel
+        internal readonly Logger InternalLogger = new($"[EWova]AuthProvider ", LogLevel.Full);
+        public ILogSource Logger => InternalLogger;
+        public LogLevel LoggerLevel
         {
             get => InternalLogger.PrintLevel;
             set => InternalLogger.PrintLevel = value;
@@ -140,13 +104,15 @@ namespace EWova.Auth
 
         private bool _isProcessingDeepLink = false;
         private bool _isRefreshing = false;
+        private bool _disposed = false;
 
         private TokenSet _currentTokens;
         private AuthorizeProcess _currentAuthorizeProcess;
         private CancellationTokenSource _renewLoopCts;
+        private readonly CancellationTokenSource _lifecycleCts = new();
         private DeepLinkHandler _deepLinkHandler;
-        private EWovaAuthConfig _authConfig;
-        private TokenService _tokenService;
+        private readonly EWovaAuthConfig _authConfig;
+        private readonly TokenService _tokenService;
         private TokenSet CurrentTokens
         {
             get => _currentTokens;
@@ -201,22 +167,21 @@ namespace EWova.Auth
                 }
             }
         }
-        public bool IsSupportAuthorizeViaDeepLink
+        public static bool IsSupportAuthorizeViaDeepLink
             => IsDeepLinkHandlerAvailable;
 
-        private bool IsDeepLinkHandlerAvailable 
+        private static bool IsDeepLinkHandlerAvailable
             => DeepLinkHandler.IsSupported;
 
-        private void Awake()
+        protected AuthProvider(EWovaAuthConfig authConfig, Logger logger = null)
         {
-            string appScheme;
-            DeepLinkHandler deepLinkHandler = null;
+            _authConfig = authConfig ?? throw new ArgumentNullException(nameof(authConfig));
+            InternalLogger = logger ?? new Logger($"[EWova]{this.GetType().Name} ", LogLevel.Full);
 
-            deepLinkHandler = DeepLinkHandler.Default;
-            appScheme = deepLinkHandler.Scheme;
+            var deepLinkHandler = DeepLinkHandler.Default;
 
             if (InternalLogger.InfoEnabled)
-                InternalLogger.Info($"成功載入 Resource/{DeepLinkConfig.ResourceName}，AppScheme 設定為：{appScheme}");
+                InternalLogger.Info($"成功載入 Resource/{DeepLinkConfig.ResourceName}，AppScheme 設定為：{deepLinkHandler.Scheme}");
 
             if (!IsDeepLinkHandlerAvailable)
             {
@@ -227,13 +192,16 @@ namespace EWova.Auth
             deepLinkHandler.ContinueWith(OnDeepLinkHandlerActivated);
             _deepLinkHandler = deepLinkHandler;
 
-            _authConfig = EWovaAuthConfigFactory.Create(appScheme, Environment.DeploymentMode);
             _tokenService = new TokenService(this, _authConfig);
             if (CurrentAuthState == AuthState.Initializing)
                 SetState(AuthState.Unauthenticated);
         }
-        private void OnDestroy()
+
+        public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
             if (_deepLinkHandler != null)
             {
                 _deepLinkHandler.Remove(OnDeepLinkHandlerActivated);
@@ -241,9 +209,8 @@ namespace EWova.Auth
             }
             CancelAuthorizeProcess();
             StopRenewLoop();
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.playModeStateChanged -= EditorApplication_playModeStateChanged;
-#endif
+            _lifecycleCts.Cancel();
+            _lifecycleCts.Dispose();
         }
 
         public bool TryGetValidAccessToken(out string accessToken)
@@ -264,7 +231,7 @@ namespace EWova.Auth
             if (CurrentTokens != null && !CurrentTokens.IsAccessTokenExpired)
                 return CurrentTokens.AccessToken;
 
-            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken, cancellationToken).Token;
+            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(_lifecycleCts.Token, cancellationToken).Token;
             return await RefreshInternalAsync(linkedToken);
         }
         public async UniTask<string> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
@@ -272,7 +239,7 @@ namespace EWova.Auth
             if (CurrentAuthState != AuthState.Authenticated && CurrentAuthState != AuthState.RefreshingToken)
                 throw new InvalidOperationException("未處於認證狀態，無法刷新 Token。");
 
-            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken, cancellationToken).Token;
+            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(_lifecycleCts.Token, cancellationToken).Token;
             return await RefreshInternalAsync(linkedToken);
         }
         /// <exception cref="PlatformNotSupportedException">當前平台不支援任何註冊的 DeepLinkReceiver，無法進行授權流程。</exception>
@@ -476,7 +443,7 @@ namespace EWova.Auth
                         InternalLogger.Info("收到 Launch Ticket 授權請求");
 
                     SetState(AuthState.Authenticating);
-                    var tokenSet = await _tokenService.ExchangeLaunchTicketAsync(launchTicket, destroyCancellationToken);
+                    var tokenSet = await _tokenService.ExchangeLaunchTicketAsync(launchTicket, _lifecycleCts.Token);
                     CurrentTokens = tokenSet;
                     if (InternalLogger.InfoEnabled)
                         InternalLogger.Info("使用者成功登入。");
@@ -534,7 +501,7 @@ namespace EWova.Auth
                     }
 
                     SetState(AuthState.Authenticating);
-                    var tokenSet = await _tokenService.ExchangeCodeAsync(code, authProcessing.CodeVerifier, authProcessing.Nonce, destroyCancellationToken);
+                    var tokenSet = await _tokenService.ExchangeCodeAsync(code, authProcessing.CodeVerifier, authProcessing.Nonce, _lifecycleCts.Token);
 
                     if (authProcessing.IsCompleted)
                         return;

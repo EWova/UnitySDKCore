@@ -26,12 +26,12 @@ namespace EWova.Auth
                 RequestLaunchTicket((str) =>
                 {
                     _deeplink = str;
-                    EwovaAuthManager.Instance.HandleAuthenticationUrl(str);
+                    EWovaAuth.Instance.HandleAuthenticationUrl(str);
                 }).Forget();
             }
             else
             {
-                EwovaAuthManager.Instance.HandleAuthenticationUrl(_deeplink);
+                EWovaAuth.Instance.HandleAuthenticationUrl(_deeplink);
             }
 
         }
@@ -73,15 +73,15 @@ namespace EWova.Auth
 
             if (string.IsNullOrEmpty(AccessToken))
             {
-                if (EwovaAuthManager.InternalLogger.ErrorEnabled)
-                    EwovaAuthManager.InternalLogger.Err("錯誤的 AccessToken，可以到 admin.ewova 找 cookie oidc.user:https://auth.ewova.dev:admin-portal 取得 access_token");
+                if (EWovaAuth.Instance.InternalLogger.ErrorEnabled)
+                    EWovaAuth.Instance.InternalLogger.Err("錯誤的 AccessToken，可以到 admin.ewova 找 cookie oidc.user:https://auth.ewova.dev:admin-portal 取得 access_token");
                 error = true;
             }
 
             if (string.IsNullOrEmpty(AppId))
             {
-                if (EwovaAuthManager.InternalLogger.ErrorEnabled)
-                    EwovaAuthManager.InternalLogger.Err("錯誤的 AppId，請選擇你要測試的軟體 https://admin.ewova.dev/apps");
+                if (EWovaAuth.Instance.InternalLogger.ErrorEnabled)
+                    EWovaAuth.Instance.InternalLogger.Err("錯誤的 AppId，請選擇你要測試的軟體 https://admin.ewova.dev/apps");
                 error = true;
             }
 
@@ -91,9 +91,9 @@ namespace EWova.Auth
             res = new LaunchTicketResponse();
 
             // get reflect object 
-            TokenService tokenService = typeof(EwovaAuthManager)
+            TokenService tokenService = typeof(EWovaAuth)
                 .GetField("_tokenService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .GetValue(EwovaAuthManager.Instance) as TokenService;
+                .GetValue(EWovaAuth.Instance) as TokenService;
             try
             {
                 res = await tokenService.CreateLaunchTicketAsync(AccessToken, AppId);
@@ -101,16 +101,16 @@ namespace EWova.Auth
             }
             catch (TokenEndpointException ex)
             {
-                if (EwovaAuthManager.InternalLogger.ErrorEnabled)
-                    EwovaAuthManager.InternalLogger.Err($"取得 launch ticket TokenEndpointException 失敗: {ex}");
+                if (EWovaAuth.Instance.InternalLogger.ErrorEnabled)
+                    EWovaAuth.Instance.InternalLogger.Err($"取得 launch ticket TokenEndpointException 失敗: {ex}");
 
                 UnityEngine.Debug.LogException(ex);
                 return;
             }
             catch (Exception ex)
             {
-                if (EwovaAuthManager.InternalLogger.ErrorEnabled)
-                    EwovaAuthManager.InternalLogger.Err($"取得 launch ticket 失敗: {ex}");
+                if (EWovaAuth.Instance.InternalLogger.ErrorEnabled)
+                    EWovaAuth.Instance.InternalLogger.Err($"取得 launch ticket 失敗: {ex}");
 
                 UnityEngine.Debug.LogException(ex);
                 return;
@@ -119,18 +119,18 @@ namespace EWova.Auth
         [ContextMenu("Try Get Launch Ticket")]
         public void TryGetLaunchTicket()
         {
-            IAuthManager auth = EwovaAuthManager.Instance;
+            IAuthManager auth = EWovaAuth.Instance;
             if (auth.CurrentAuthState != AuthState.Authenticated)
             {
                 Debug.LogWarning("User is not authenticated.");
                 return;
             }
-            EwovaAuthManager.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
+            EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
         }
 
         public bool IsSupport(RuntimePlatform runtimePlatform)
         {
-            if (!EwovaAuthManager.EnableMockDeepLinkReceiver)
+            if (!EWovaAuth.EnableMockDeepLinkReceiver)
                 return false;
 
             return runtimePlatform is

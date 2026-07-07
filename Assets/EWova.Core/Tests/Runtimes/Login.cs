@@ -13,7 +13,7 @@ namespace EWova.Core.Tests
         [ContextMenu("Authorize Via Browser")]
         public void AuthorizeViaBrowser()
         {
-            IAuthManager auth = EwovaAuthManager.Instance;
+            IAuthManager auth = EWovaAuth.Instance;
 
             if (auth.CurrentAuthState == AuthState.Authenticated)
             {
@@ -56,7 +56,7 @@ namespace EWova.Core.Tests
         [ContextMenu("Authorize Via Browser 強制登入")]
         public void AuthorizeViaBrowserWithLogin()
         {
-            IAuthManager auth = EwovaAuthManager.Instance;
+            IAuthManager auth = EWovaAuth.Instance;
 
             if (auth.CurrentAuthState == AuthState.Authenticated)
             {
@@ -118,7 +118,7 @@ namespace EWova.Core.Tests
         [ContextMenu("Logout")]
         public void Logout()
         {
-            IAuthManager auth = EwovaAuthManager.Instance;
+            IAuthManager auth = EWovaAuth.Instance;
             if (auth.CurrentAuthState != AuthState.Authenticated)
             {
                 Debug.LogWarning("User is not authenticated.");
@@ -132,13 +132,13 @@ namespace EWova.Core.Tests
         [ContextMenu("Try launch ewova by CreateLaunchTicket")]
         public void TryCreateLaunchTicket()
         {
-            IAuthManager auth = EwovaAuthManager.Instance;
+            IAuthManager auth = EWovaAuth.Instance;
             if (auth.CurrentAuthState != AuthState.Authenticated)
             {
                 Debug.LogWarning("User is not authenticated.");
                 return;
             }
-            EwovaAuthManager.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
+            EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
         }
 
         [ContextMenu("DEEPLINK")]
