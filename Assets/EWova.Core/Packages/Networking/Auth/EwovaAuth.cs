@@ -4,6 +4,7 @@ namespace EWova.Auth
 {
     public class EWovaAuth : AuthProvider
     {
+        public readonly static EWovaAuth Instance = new();
         internal EWovaAuth()
             : base(EWovaAuthConfigFactory.Create(options =>
             {

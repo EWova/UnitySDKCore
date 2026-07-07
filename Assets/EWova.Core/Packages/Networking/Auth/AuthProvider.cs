@@ -87,7 +87,7 @@ namespace EWova.Auth
             }
         }
 
-        protected readonly Logger InternalLogger;
+        internal protected readonly Logger InternalLogger;
         public ILogSource Logger => InternalLogger;
         public LogLevel LoggerLevel
         {
