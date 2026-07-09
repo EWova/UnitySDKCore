@@ -101,6 +101,7 @@ namespace EWova.Auth
         public event Action<AuthState> OnAuthStateChanged;
 
         public bool UseNativeDeepLinkReceiver { get; set; } = false;
+        public bool IsAuthorizeViaBrowserInProgress => _currentAuthorizeProcess != null && !_currentAuthorizeProcess.IsCompleted;
 
         private bool _isProcessingDeepLink = false;
         private bool _isRefreshing = false;

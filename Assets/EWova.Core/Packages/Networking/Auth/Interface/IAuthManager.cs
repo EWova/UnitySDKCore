@@ -64,6 +64,7 @@ namespace EWova.Auth
         /// </summary>
         UniTask<string> GetAccessTokenAsync(CancellationToken cancellationToken = default);
         void Logout();
+        bool IsAuthorizeViaBrowserInProgress { get; }
         /// <summary>
         /// 使用系統瀏覽器進行授權流程，將會透過 DeepLink 回傳授權結果。
         /// </summary>
