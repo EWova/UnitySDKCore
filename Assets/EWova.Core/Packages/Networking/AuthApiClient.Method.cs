@@ -13,26 +13,29 @@ namespace EWova.Networking
 {
     public partial class AuthApiClient
     {
-        internal sealed class RequestTask : IDisposable
+        private int _requestIndex = 0;
+        public sealed class RequestTask : IDisposable
         {
             private readonly CancellationTokenSource _selfCts;
-            private readonly CancellationTokenSource _linkedCts;
+            private CancellationTokenSource _linkedCts;
+            internal AuthApiClient Handler;
 
-            public string Uri { get; }
-
-            public int TaskId { get; }
-            public string BaseUrl { get; }
-            public string BackendUrlOrAbsUrl { get; }
-            public string Method { get; }
-            public Dictionary<string, string> Headers { get; }
-            public string BodyString { get; }
-            public string ContentType { get; }
-            public bool IsAbsoluteUrl { get; }
-            public Logger Logger { get; }
+            public bool IsReady => Handler != null && !IsDisposed;
+            public string Uri { get; private set; }
+            public int TaskId { get; private set; }
+            public string BaseUrl { get; private set; }
+            public string BackendUrlOrAbsUrl { get; private set; }
+            public string Method { get; private set; }
+            public string AcceptType { get; private set; }
+            public Dictionary<string, string> Headers { get; private set; }
+            public string BodyString { get; private set; }
+            public string ContentType { get; private set; }
+            public bool IsAbsoluteUrl { get; private set; }
+            public Logger Logger { get; private set; }
             public bool IsDisposed { get; private set; }
-            public double CreatedAt { get; }
+            public double CreatedAt { get; private set; }
             public double DisposedAt { get; private set; }
-            public CancellationToken CancellationToken { get; }
+            public CancellationToken CancellationToken { get; private set; }
             /// <summary>
             /// 是否將 HTTP 4xx Client Error 狀態碼轉換為 ApiException。
             /// 啟用時，收到 400~499 回應會中斷正常流程並拋出 ApiException；
@@ -42,37 +45,78 @@ namespace EWova.Networking
             public bool ThrowApiExceptionFor4xxResponses { get; set; } = true;
             public TimeSpan ElapsedTime => TimeSpan.FromSeconds((IsDisposed ? DisposedAt : Time.realtimeSinceStartupAsDouble) - CreatedAt);
             public RequestTask(
-                int taskId,
-                string baseUrl,
                 string backendUrlOrAbsoluteUrl,
                 bool isAbsoluteUrl,
                 string method,
-                Dictionary<string, string> headers,
-                string bodyString,
+                string acceptType,
+                object body,
                 string contentType,
-                Logger logger,
-                CancellationToken cancellationToken)
+                bool throwApiExceptionFor4xxResponses,
+                CancellationToken ct)
             {
-                TaskId = taskId;
-                BaseUrl = baseUrl;
                 BackendUrlOrAbsUrl = backendUrlOrAbsoluteUrl;
+                IsAbsoluteUrl = isAbsoluteUrl;
                 Method = method;
-                Headers = headers;
+                AcceptType = acceptType;
+                string bodyString;
+                if (body == null)
+                    bodyString = null;
+                else
+                {
+                    if (body.GetType() != typeof(string))
+                        bodyString = JsonConvert.SerializeObject(body);
+                    else
+                        bodyString = (string)body;
+                }
                 BodyString = bodyString;
                 ContentType = contentType;
-                IsAbsoluteUrl = isAbsoluteUrl;
-                Logger = logger;
+                ThrowApiExceptionFor4xxResponses = throwApiExceptionFor4xxResponses;
 
                 CreatedAt = Time.realtimeSinceStartupAsDouble;
 
                 _selfCts = new CancellationTokenSource();
+                var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _selfCts.Token);
+                CancellationToken = linkedCts.Token;
+            }
+
+            internal void HandleRequest(AuthApiClient authApiClient)
+            {
+                var headers = new Dictionary<string, string>();
+
+                if (authApiClient.TryGetValidAccessToken(out string accessToken))
+                    headers[key: "Authorization"] = $"Bearer {accessToken}";
+
+                foreach (var kv in authApiClient.AdditionalHeaders)
+                {
+                    var value = kv.Value?.Invoke();
+                    if (value != null)
+                        headers[kv.Key] = value;
+                }
+
+                var PackageHeaders = new List<SdkPackageInfo>();
+                authApiClient.CollectPackages(PackageHeaders);
+                var sdkHeader = new UnitySdkHeader()
+                {
+                    CoreVersion = PackageInfo.Version,
+                    Packages = PackageHeaders
+                };
+                headers[key: "X-Unity-Sdk"] = JsonConvert.SerializeObject(sdkHeader, Formatting.None, JsonSettings);
+
+                if (ContentType != null)
+                    headers["Content-Type"] = ContentType;
+                if (AcceptType != null)
+                    headers["Accept"] = AcceptType;
+
+                Headers = headers;
+                Handler = authApiClient;
+                BaseUrl = authApiClient._baseUrl;
+                TaskId = authApiClient._requestIndex++;
+                Logger = authApiClient._logger;
                 _linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    _selfCts.Token);
-
+                    authApiClient._disposeCts.Token,
+                    CancellationToken);
                 CancellationToken = _linkedCts.Token;
-
-                Uri = isAbsoluteUrl ? backendUrlOrAbsoluteUrl : $"{baseUrl}/{backendUrlOrAbsoluteUrl.TrimStart('/')}";
+                Uri = IsAbsoluteUrl ? BackendUrlOrAbsUrl : $"{BaseUrl}/{BackendUrlOrAbsUrl.TrimStart('/')}";
             }
 
             public void Cancel()
@@ -93,6 +137,88 @@ namespace EWova.Networking
 
                 _linkedCts.Dispose();
                 _selfCts.Dispose();
+            }
+
+            public static RequestTask GET
+            (
+                string backendUrlOrAbsoluteUrl,
+                bool isAbsoluteUrl = false,
+                string method = UnityWebRequest.kHttpVerbGET,
+                string acceptType = null,
+                object body = null,
+                string contentType = null,
+                bool throwApiExceptionFor4xxResponses = true,
+                CancellationToken ct = default)
+            {
+                return new RequestTask(
+                    backendUrlOrAbsoluteUrl: backendUrlOrAbsoluteUrl,
+                    isAbsoluteUrl: isAbsoluteUrl,
+                    method: method,
+                    acceptType: acceptType,
+                    body: body,
+                    contentType: contentType,
+                    throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    ct: ct);
+            }
+            public static RequestTask POST
+            (
+                string backendUrlOrAbsoluteUrl,
+                bool isAbsoluteUrl = false,
+                string acceptType = null,
+                object body = null,
+                string contentType = null,
+                bool throwApiExceptionFor4xxResponses = true,
+                CancellationToken ct = default)
+            {
+                return new RequestTask(
+                    backendUrlOrAbsoluteUrl: backendUrlOrAbsoluteUrl,
+                    isAbsoluteUrl: isAbsoluteUrl,
+                    method: UnityWebRequest.kHttpVerbPOST,
+                    acceptType: acceptType,
+                    body: body,
+                    contentType: contentType,
+                    throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    ct: ct);
+            }
+            public static RequestTask PUT
+            (
+                string backendUrlOrAbsoluteUrl,
+                bool isAbsoluteUrl = false,
+                string acceptType = null,
+                object body = null,
+                string contentType = null,
+                bool throwApiExceptionFor4xxResponses = true,
+                CancellationToken ct = default)
+            {
+                return new RequestTask(
+                    backendUrlOrAbsoluteUrl: backendUrlOrAbsoluteUrl,
+                    isAbsoluteUrl: isAbsoluteUrl,
+                    method: UnityWebRequest.kHttpVerbPUT,
+                    acceptType: acceptType,
+                    body: body,
+                    contentType: contentType,
+                    throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    ct: ct);
+            }
+            public static RequestTask DELETE
+            (
+                string backendUrlOrAbsoluteUrl,
+                bool isAbsoluteUrl = false,
+                string acceptType = null,
+                object body = null,
+                string contentType = null,
+                bool throwApiExceptionFor4xxResponses = true,
+                CancellationToken ct = default)
+            {
+                return new RequestTask(
+                    backendUrlOrAbsoluteUrl: backendUrlOrAbsoluteUrl,
+                    isAbsoluteUrl: isAbsoluteUrl,
+                    method: UnityWebRequest.kHttpVerbDELETE,
+                    acceptType: acceptType,
+                    body: body,
+                    contentType: contentType,
+                    throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    ct: ct);
             }
         }
 
@@ -130,165 +256,16 @@ namespace EWova.Networking
         protected virtual void CollectPackages(List<SdkPackageInfo> list) { }
 
         #region Methods
-
         ///<exception cref="ApiException"></exception>
-        public UniTask<string> Get(
-            string endpoint,
-            string acceptType = null,
-            CancellationToken ct = default)
-            => Send<string>(endpoint, "GET", acceptType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<T> Get<T>(
-            string endpoint,
-            string acceptType = null,
-            CancellationToken ct = default)
-            => Send<T>(endpoint, "GET", acceptType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<string> Post(
-            string endpoint,
-            object body,
-            string acceptType = null,
-            string contentType = null,
-            CancellationToken ct = default)
-            => Send<string>(endpoint, "POST", acceptType, body, contentType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<T> Post<T>(
-            string endpoint,
-            object body,
-            string acceptType = null,
-            string contentType = null,
-            CancellationToken ct = default)
-            => Send<T>(endpoint, "POST", acceptType, body, contentType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<string> Put(
-            string endpoint,
-            object body,
-            string acceptType = null,
-            string contentType = null,
-            CancellationToken ct = default)
-            => Send<string>(endpoint, "PUT", acceptType, body, contentType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<T> Put<T>(
-            string endpoint,
-            object body,
-            string acceptType = null,
-            string contentType = null,
-            CancellationToken ct = default)
-            => Send<T>(endpoint, "PUT", acceptType, body, contentType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<string> Delete(
-            string endpoint,
-            string acceptType = null,
-            CancellationToken ct = default)
-            => Send<string>(endpoint, "DELETE", acceptType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        public UniTask<T> Delete<T>(
-            string endpoint,
-            string acceptType = null,
-            CancellationToken ct = default)
-            => Send<T>(endpoint, "DELETE", acceptType, ct: ct);
-
-        ///<exception cref="ApiException"></exception>
-        internal UniTask<T> Send<T>(
-            string urlOrEndpoint,
-            string method,
-            string acceptType = null,
-            object body = null,
-            string contentType = null,
-            bool isAbsoluteUrl = false,
-            Action<RequestTask> postProcRequestTask = null,
-            CancellationToken ct = default)
+        protected internal UniTask<T> Send<T>(RequestTask task,
+            Action<RequestTask> postProcRequestTask = null)
         {
             ThrowIfDisposed();
-
-            RequestTask req = CreateRequestTask(
-                urlOrEndpoint: urlOrEndpoint,
-                method,
-                acceptType,
-                body,
-                contentType,
-                isAbsoluteUrl,
-                cancellationToken: ct);
-
-            postProcRequestTask?.Invoke(req);
-            return SendUnityWebRequest<T>(req);
+            postProcRequestTask?.Invoke(task);
+            task.HandleRequest(this);
+            return SendUnityWebRequest<T>(task);
         }
         #endregion
-
-        private int _requestIndex = 0;
-        private RequestTask CreateRequestTask(
-            string urlOrEndpoint,
-            string method,
-            string acceptType,
-            object body,
-            string contentType,
-            bool isAbsoluteUrl,
-            CancellationToken cancellationToken)
-        {
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken,
-                _disposeCts.Token);
-
-            var headers = new Dictionary<string, string>();
-
-            if (TryGetValidAccessToken(out string accessToken))
-                headers[key: "Authorization"] = $"Bearer {accessToken}";
-
-            foreach (var kv in AdditionalHeaders)
-            {
-                var value = kv.Value?.Invoke();
-                if (value != null)
-                    headers[kv.Key] = value;
-            }
-
-            var PackageHeaders = new List<SdkPackageInfo>();
-            CollectPackages(PackageHeaders);
-            var sdkHeader = new UnitySdkHeader()
-            {
-                CoreVersion = PackageInfo.Version,
-                Packages = PackageHeaders
-            };
-            headers[key: "X-Unity-Sdk"] = JsonConvert.SerializeObject(sdkHeader, Formatting.None, JsonSettings);
-
-            if (contentType != null)
-                headers["Content-Type"] = contentType;
-            if (acceptType != null)
-                headers["Accept"] = acceptType;
-
-            string bodyString;
-            if (body == null)
-            {
-                bodyString = null;
-            }
-            else
-            {
-                if (body.GetType() != typeof(string))
-                    bodyString = JsonConvert.SerializeObject(body);
-                else
-                    bodyString = (string)body;
-            }
-
-            return new RequestTask
-            (
-                taskId: _requestIndex++,
-                baseUrl: _baseUrl,
-                backendUrlOrAbsoluteUrl: urlOrEndpoint,
-                isAbsoluteUrl: isAbsoluteUrl,
-                method: method,
-                headers: headers,
-                bodyString: bodyString,
-                contentType: contentType,
-                logger: _logger,
-                cancellationToken: linkedCts.Token
-            );
-        }
 
         private static async UniTask<T> SendUnityWebRequest<T>(RequestTask task)
         {
@@ -399,7 +376,6 @@ namespace EWova.Networking
             {
                 if (logger.WarnEnabled)
                     logger.Warn($"{task.Method} {task.TaskId} Response {task.BackendUrlOrAbsUrl} Cancelled");
-
                 throw;
             }
             catch (Exception ex)
@@ -407,7 +383,14 @@ namespace EWova.Networking
                 if (logger.ErrorEnabled)
                     logger.Err($"{task.Method} {task.TaskId} Response {task.BackendUrlOrAbsUrl} Unexpected {ex}");
 
-                throw;
+                throw new ApiException(
+                    errorCode: ApiErrorCode.Unknown,
+                    statusCode: 0,
+                    uri: task.Uri,
+                    responseText: null,
+                    message: "發送請求時發生非預期錯誤，若是 SDK 內部錯誤無法解決請聯絡我們。",
+                    inner: ex
+                );
             }
             finally
             {

@@ -33,11 +33,12 @@ namespace EWova.Auth
             string nonce,
             CancellationToken cancellationToken = default)
         {
-            var response = await m_apiClient.Post<TokenResponse>(
-                endpoint: m_config.TokenEndpoint,
+            var response = await m_apiClient.Send<TokenResponse>(
+                AuthApiClient.RequestTask.POST(
+                backendUrlOrAbsoluteUrl: m_config.TokenEndpoint,
                 body: AuthRequestBuilder.BuildExchangeCodeBody(m_config, code, codeVerifier),
                 contentType: "application/x-www-form-urlencoded",
-                ct: cancellationToken);
+                ct: cancellationToken));
 
             var tokenSet = TokenSet.FromResponse(response);
             var payload = tokenSet.Jwt.Payload;
@@ -62,12 +63,13 @@ namespace EWova.Auth
             string launchTicket,
             CancellationToken cancellationToken = default)
         {
-            var response = await m_apiClient.Post<TokenResponse>(
-                endpoint: m_config.TokenEndpoint,
+            var response = await m_apiClient.Send<TokenResponse>(
+                AuthApiClient.RequestTask.POST(
+                backendUrlOrAbsoluteUrl: m_config.TokenEndpoint,
                 body: AuthRequestBuilder.BuildExchangeLaunchTicketBody(m_config, launchTicket),
                 acceptType: "application/json",
                 contentType: "application/x-www-form-urlencoded",
-                ct: cancellationToken);
+                ct: cancellationToken));
 
             return TokenSet.FromResponse(response);
         }
@@ -78,17 +80,17 @@ namespace EWova.Auth
             CancellationToken ct = default)
         {
             return await m_apiClient.Send<LaunchTicketResponse>(
-                urlOrEndpoint: m_config.LaunchTicketEndpoint,
-                method: "POST",
+                AuthApiClient.RequestTask.POST(
+                backendUrlOrAbsoluteUrl: m_config.LaunchTicketEndpoint,
                 acceptType: "application/json",
                 body: AuthRequestBuilder.BuildCreateLaunchTicketJsonBody(appId),
                 contentType: "application/json",
                 isAbsoluteUrl: false,
+                ct: ct),
                 postProcRequestTask: (reqTask) =>
                 {
                     reqTask.Headers["Authorization"] = $"Bearer {accessToken}";
-                },
-                ct: ct);
+                });
         }
 
         public async UniTask<TokenSet> RefreshTokenAsync(
@@ -102,12 +104,13 @@ namespace EWova.Auth
             {
                 try
                 {
-                    var response = await m_apiClient.Post<TokenResponse>(
-                        endpoint: m_config.TokenEndpoint,
+                    var response = await m_apiClient.Send<TokenResponse>(
+                        AuthApiClient.RequestTask.POST(
+                        backendUrlOrAbsoluteUrl: m_config.TokenEndpoint,
                         body: body,
                         acceptType: "application/json",
                         contentType: "application/x-www-form-urlencoded",
-                        ct: cancellationToken);
+                        ct: cancellationToken));
 
                     return TokenSet.FromResponse(response);
                 }

@@ -15,14 +15,18 @@ namespace EWova.Networking
             bool isAbsoluteUrl = false,
             CancellationToken ct = default)
         {
-            var task = CreateRequestTask(
-                urlOrEndpoint: url,
+            var task = new RequestTask
+            (
+                backendUrlOrAbsoluteUrl: url,
+                isAbsoluteUrl: true,
                 method: UnityWebRequest.kHttpVerbGET,
                 acceptType: null,
                 body: null,
                 contentType: null,
-                isAbsoluteUrl: isAbsoluteUrl,
-                cancellationToken: ct);
+                throwApiExceptionFor4xxResponses: true,
+                ct: ct
+            );
+            task.HandleRequest(this);
 
             var index = task.TaskId;
             var logger = task.Logger;
