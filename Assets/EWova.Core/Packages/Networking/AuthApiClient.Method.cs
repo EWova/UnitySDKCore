@@ -112,7 +112,10 @@ namespace EWova.Networking
             public string Version { get; set; } = string.Empty;
         }
 
-        protected readonly Dictionary<string, string> AdditionalHeaders = new();
+        /// <summary>
+        /// value 若 return null，則不會加入 Header
+        /// </summary>
+        protected readonly Dictionary<string, Func<string>> AdditionalHeaders = new();
 
         /// <summary>
         /// 將會用到的套件資訊加入 list 中，最終會傳回 "X-Unity-Sdk" Header
@@ -232,7 +235,11 @@ namespace EWova.Networking
                 headers[key: "Authorization"] = $"Bearer {accessToken}";
 
             foreach (var kv in AdditionalHeaders)
-                headers[kv.Key] = kv.Value;
+            {
+                var value = kv.Value?.Invoke();
+                if (value != null)
+                    headers[kv.Key] = value;
+            }
 
             var PackageHeaders = new List<SdkPackageInfo>();
             CollectPackages(PackageHeaders);
