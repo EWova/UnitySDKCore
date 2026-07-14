@@ -33,6 +33,13 @@ namespace EWova.Networking
             public double CreatedAt { get; }
             public double DisposedAt { get; private set; }
             public CancellationToken CancellationToken { get; }
+            /// <summary>
+            /// 是否將 HTTP 4xx Client Error 狀態碼轉換為 ApiException。
+            /// 啟用時，收到 400~499 回應會中斷正常流程並拋出 ApiException；
+            /// 停用時，4xx 回應會視為一般 HTTP 回應，由呼叫端自行解析處理。
+            /// 預設為 true。
+            /// </summary>
+            public bool ThrowApiExceptionFor4xxResponses { get; set; } = true;
             public TimeSpan ElapsedTime => TimeSpan.FromSeconds((IsDisposed ? DisposedAt : Time.realtimeSinceStartupAsDouble) - CreatedAt);
             public RequestTask(
                 int taskId,
@@ -290,31 +297,8 @@ namespace EWova.Networking
 
             UnityWebRequest request = null;
 
-            try
+            T HandleResponse()
             {
-                token.ThrowIfCancellationRequested();
-
-                request = new UnityWebRequest(task.Uri, task.Method);
-
-                if (!string.IsNullOrEmpty(task.BodyString))
-                {
-                    var bytes = System.Text.Encoding.UTF8.GetBytes(task.BodyString);
-                    request.uploadHandler = new UploadHandlerRaw(bytes);
-                    request.uploadHandler.contentType = task.ContentType;
-                }
-
-                request.downloadHandler = new DownloadHandlerBuffer();
-
-                foreach (var kv in task.Headers)
-                    request.SetRequestHeader(kv.Key, kv.Value);
-
-                if (logger.InfoEnabled)
-                {
-                    logger.Info($"{task.Method} {task.TaskId} Request {task.BackendUrlOrAbsUrl} {task.BodyString}");
-                }
-
-                await request.SendWebRequest().ToUniTask(cancellationToken: token);
-
                 var httpCode = (HttpStatusCode)request.responseCode;
                 var text = request.downloadHandler?.text ?? string.Empty;
 
@@ -358,11 +342,40 @@ namespace EWova.Networking
                     );
                 }
             }
+
+            try
+            {
+                token.ThrowIfCancellationRequested();
+
+                request = new UnityWebRequest(task.Uri, task.Method);
+
+                if (!string.IsNullOrEmpty(task.BodyString))
+                {
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(task.BodyString);
+                    request.uploadHandler = new UploadHandlerRaw(bytes);
+                    request.uploadHandler.contentType = task.ContentType;
+                }
+
+                request.downloadHandler = new DownloadHandlerBuffer();
+
+                foreach (var kv in task.Headers)
+                    request.SetRequestHeader(kv.Key, kv.Value);
+
+                if (logger.InfoEnabled)
+                    logger.Info($"{task.Method} {task.TaskId} Request {task.BackendUrlOrAbsUrl} {task.BodyString}");
+
+                await request.SendWebRequest().ToUniTask(cancellationToken: token);
+
+                return HandleResponse();
+            }
             catch (UnityWebRequestException ex)
             {
                 var httpCode = (HttpStatusCode)ex.ResponseCode;
-                var text = ex.Text ?? string.Empty;
 
+                if (!task.ThrowApiExceptionFor4xxResponses && (int)httpCode >= 400 && (int)httpCode < 500)
+                    return HandleResponse();
+
+                var text = ex.Text ?? string.Empty;
                 var errorCode = ex.ResponseCode >= 500
                     ? ApiErrorCode.ServerError
                     : ApiErrorCode.Unknown;
