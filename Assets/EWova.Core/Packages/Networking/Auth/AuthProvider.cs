@@ -346,7 +346,7 @@ namespace EWova.Auth
             }
 
             var launchUrl = AuthRequestBuilder.BuildLaunchEWovaAppUrlWithLaunchTick(
-                EWovaApp.Scheme,
+                EWovaApp.DeepLinkScheme,
                 requestAppId,
                 null,
                 worldId,

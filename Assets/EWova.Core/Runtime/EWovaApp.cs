@@ -8,20 +8,20 @@ using UnityEngine;
 namespace EWova
 {
     [Flags]
-    public enum LaunchViaDeepLinkOption
+    public enum EWovaDeepLinkLaunchOption
     {
         JustLaunch = 0,
 
         BackToWorld = 1 << 0,
 
-        BackToWorldAndSpace = BackToWorld | 1 << 1,
+        BackToWorldAndSpaceInstance = BackToWorld | 1 << 1,
 
-        Default = BackToWorldAndSpace
+        Default = BackToWorldAndSpaceInstance
     }
 
     public static class EWovaApp
     {
-        public const string Scheme = "ewova";
+        public const string DeepLinkScheme = "ewova";
 
         private static bool _subscribed;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -34,39 +34,45 @@ namespace EWova
         }
 
         /// <summary>
-        /// 如果有值，代表是從 EWova 元宇宙應用程式啟動到或跳轉到此應用程式，可以從中取得相關的課程世界或空間資訊
+        /// 如果有值，代表此 EWova App 是由其他應用程式透過 EWova Deep Link 啟動，
+        /// 可從中取得啟動時附帶的世界或空間資訊。
         /// </summary>
-        public static EWovaAppLaunchContext LaunchContext { get; internal set; } = null;
+        public static EWovaAppInvocationContext InvocationContext { get; internal set; } = null;
         /// <summary>
         /// EWova 元宇宙應用程式的 Deep Link URL
         /// </summary>
-        public static string AppDeepLink = $"{Scheme}://";
+        public static string DeepLinkPrefix = $"{DeepLinkScheme}://";
 
         public static string GetDeepLink(
-            LaunchViaDeepLinkOption option,
+            EWovaDeepLinkLaunchOption option,
             IReadOnlyDictionary<string, string> extraQuery = null)
         {
             var builder = new UriBuilder
             {
-                Scheme = Scheme,
+                Scheme = DeepLinkScheme,
                 Host = string.Empty
             };
 
             Dictionary<string, string> queryDict = extraQuery == null ? new() : new(extraQuery);
 
-            if (option == LaunchViaDeepLinkOption.BackToWorld ||
-                option == LaunchViaDeepLinkOption.BackToWorldAndSpace)
+            bool backToWorld =
+                (option & EWovaDeepLinkLaunchOption.BackToWorld) != 0;
+
+            bool backToWorldAndSpace =
+                (option & EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance) ==
+                EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance;
+
+            if (backToWorld &&
+                InvocationContext?.WorldGuid is Guid worldGuid)
             {
-                if (LaunchContext?.WorldGuid is Guid worldGuid)
+                queryDict[EWovaAppInvocationContext.WorldIdKey] =
+                    worldGuid.ToString();
+
+                if (backToWorldAndSpace &&
+                    InvocationContext.SpaceInstanceIndex is int spaceId)
                 {
-                    queryDict[EWovaAppLaunchContext.WorldIdKey] =
-                        worldGuid.ToString();
-                    if (option == LaunchViaDeepLinkOption.BackToWorldAndSpace &&
-                        LaunchContext.SpaceInstanceIndex is int spaceId)
-                    {
-                        queryDict[EWovaAppLaunchContext.SpaceIdKey] =
-                            spaceId.ToString();
-                    }
+                    queryDict[EWovaAppInvocationContext.SpaceIdKey] =
+                        spaceId.ToString();
                 }
             }
 
@@ -84,18 +90,18 @@ namespace EWova
         }
 
         public static void LaunchViaDeepLink(
-            LaunchViaDeepLinkOption option = LaunchViaDeepLinkOption.Default,
+            EWovaDeepLinkLaunchOption option = EWovaDeepLinkLaunchOption.Default,
             IReadOnlyDictionary<string, string> extraQuery = null)
         {
-            if (option == LaunchViaDeepLinkOption.Default)
+            if (option == EWovaDeepLinkLaunchOption.Default)
             {
-                if (LaunchContext != null)
+                if (InvocationContext != null)
                 {
-                    option = LaunchViaDeepLinkOption.BackToWorldAndSpace;
+                    option = EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance;
                 }
                 else
                 {
-                    option = LaunchViaDeepLinkOption.JustLaunch;
+                    option = EWovaDeepLinkLaunchOption.JustLaunch;
                 }
             }
 
@@ -105,11 +111,11 @@ namespace EWova
         private static void LoadFromDeepLink(DeepLinkHandler handler)
         {
             var url = handler.Query;
-            string wid = url.ContainsKey(EWovaAppLaunchContext.WorldIdKey) ? url[EWovaAppLaunchContext.WorldIdKey] : null;
-            string sid = url.ContainsKey(EWovaAppLaunchContext.SpaceIdKey) ? url[EWovaAppLaunchContext.SpaceIdKey] : null;
+            string wid = url.ContainsKey(EWovaAppInvocationContext.WorldIdKey) ? url[EWovaAppInvocationContext.WorldIdKey] : null;
+            string sid = url.ContainsKey(EWovaAppInvocationContext.SpaceIdKey) ? url[EWovaAppInvocationContext.SpaceIdKey] : null;
             if (wid != null || sid != null)
             {
-                var context = new EWovaAppLaunchContext();
+                var context = new EWovaAppInvocationContext();
                 if (wid != null && Guid.TryParse(wid, out var worldGuid))
                 {
                     context.WorldGuid = worldGuid;
@@ -119,8 +125,11 @@ namespace EWova
                     context.SpaceInstanceIndex = spaceInstanceIndex;
                 }
 
-                Logger.Default.Info("透過 EWova App 使用 DeepLink 穿越來，LaunchContext: " + $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}");
-                LaunchContext = context;
+                Logger.Default.Info(
+                    "透過 EWova Deep Link 啟動，InvocationContext: " +
+                    $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}"
+                );
+                InvocationContext = context;
             }
         }
     }

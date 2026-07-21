@@ -6,7 +6,7 @@ namespace EWova
     /// <summary>
     /// 是否從 EWova 元宇宙應用程式啟動到或跳轉到此應用程式
     /// </summary>
-    public class EWovaAppLaunchContext
+    public class EWovaAppInvocationContext
     {
         public const string WorldIdKey = "wid";
         public const string SpaceIdKey = "sid";
