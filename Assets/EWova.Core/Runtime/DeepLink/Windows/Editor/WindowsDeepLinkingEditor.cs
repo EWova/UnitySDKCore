@@ -1,12 +1,14 @@
 #if UNITY_EDITOR_WIN && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
 using UnityEditor;
 
+using UnityEngine;
+
 namespace EWova.DeepLink.Win.Editor
 {
-    [InitializeOnLoad]
     public static class WindowsDeepLinkingEditor
     {
-        static WindowsDeepLinkingEditor()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void InjectEditorOverrides()
         {
             WindowsDeepLinking.OverrideTargetExecutablePath = () =>
             {
@@ -19,17 +21,16 @@ namespace EWova.DeepLink.Win.Editor
                 return $"Select * from Win32_Process Where ProcessId = {currentPid}";
             };
 
-            EditorApplication.playModeStateChanged -= PlayModeStateChanged;
-            EditorApplication.playModeStateChanged += PlayModeStateChanged;
-        }
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 
-        private static void PlayModeStateChanged(PlayModeStateChange mode)
+        }
+        private static void OnPlayModeStateChanged(PlayModeStateChange change)
         {
-            if (mode == PlayModeStateChange.EnteredEditMode)
-            {
-                // 呼叫 Runtime 開放的 API 來清理狀態
-                WindowsDeepLinking.ResetState();
-            }
+            if (change != PlayModeStateChange.EnteredEditMode)
+                return;
+
+            WindowsDeepLinking.ResetState();
         }
     }
 }

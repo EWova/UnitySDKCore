@@ -23,14 +23,17 @@ namespace EWova
     {
         public const string DeepLinkScheme = "ewova";
 
-        private static bool _subscribed;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            if (_subscribed)
-                return;
-            _subscribed = true;
-            DeepLinkHandler.Default.ContinueWith(LoadFromDeepLink);
+            var disposer = DeepLinkHandler.Default.ContinueWith(LoadFromDeepLink);
+#if UNITY_EDITOR
+            Authoring.EditorDomainReleaseHelper.CleanupOneShot += () =>
+            {
+                disposer.Dispose();
+                InvocationContext = null;
+            };
+#endif
         }
 
         /// <summary>
@@ -111,6 +114,7 @@ namespace EWova
         private static void LoadFromDeepLink(DeepLinkHandler handler)
         {
             var url = handler.Query;
+
             string wid = url.ContainsKey(EWovaAppInvocationContext.WorldIdKey) ? url[EWovaAppInvocationContext.WorldIdKey] : null;
             string sid = url.ContainsKey(EWovaAppInvocationContext.SpaceIdKey) ? url[EWovaAppInvocationContext.SpaceIdKey] : null;
             if (wid != null || sid != null)
@@ -126,10 +130,21 @@ namespace EWova
                 }
 
                 Logger.Default.Info(
-                    "透過 EWova Deep Link 啟動，InvocationContext: " +
+                    "透過 EWova 啟動 DeepLink 過來的，InvocationContext: " +
                     $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}"
                 );
                 InvocationContext = context;
+                return;
+            }
+
+            string source = url.ContainsKey("source") ? url["source"] : null;
+            if (string.Equals(source, "ewovaapp", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Default.Info(
+                    "透過 EWova 啟動 DeepLink 過來的，沒有附帶世界或空間資訊"
+                );
+                InvocationContext = new EWovaAppInvocationContext();
+                return;
             }
         }
     }

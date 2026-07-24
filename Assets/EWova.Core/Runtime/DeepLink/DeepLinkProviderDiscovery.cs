@@ -6,13 +6,8 @@ namespace EWova.DeepLink
 {
     internal static class DeepLinkProviderDiscovery
     {
-        private static IDeepLinkProvider s_provider;
-
         public static IDeepLinkProvider Find()
         {
-            if (s_provider != null)
-                return s_provider;
-
             var providers =
                 AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(a =>
@@ -42,11 +37,9 @@ namespace EWova.DeepLink
                 instances.Add(provider);
             }
 
-            s_provider = instances
+            return instances
                 .OrderByDescending(x => x.Priority)
                 .FirstOrDefault();
-
-            return s_provider;
         }
     }
 }

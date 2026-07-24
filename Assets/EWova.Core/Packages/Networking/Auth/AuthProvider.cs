@@ -112,7 +112,6 @@ namespace EWova.Auth
         private CancellationTokenSource _renewLoopCts;
 
         protected readonly CancellationTokenSource _lifecycleCts = new();
-        protected DeepLinkHandler _deepLinkHandler;
         protected readonly TokenService _tokenService;
         protected readonly EWovaAuthConfig _authConfig;
 
@@ -192,24 +191,23 @@ namespace EWova.Auth
                     InternalLogger.Warn("當前平台不支援 DeepLink，這會導致跳轉登入無法正常工作，無法使用 AuthorizeViaBrowser 功能。");
             }
 
-            deepLinkHandler.ContinueWith(OnDeepLinkHandlerActivated);
-            _deepLinkHandler = deepLinkHandler;
+            _deepLinkHandlerActivatedEventDisposer = deepLinkHandler.ContinueWith(OnDeepLinkHandlerActivated);
 
             _tokenService = new TokenService(this, _authConfig);
             if (CurrentAuthState == AuthState.Initializing)
                 SetState(AuthState.Unauthenticated);
         }
 
+        private IDisposable _deepLinkHandlerActivatedEventDisposer;
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_disposed)
+                return;
             _disposed = true;
 
-            if (_deepLinkHandler != null)
-            {
-                _deepLinkHandler.Remove(OnDeepLinkHandlerActivated);
-                _deepLinkHandler = null;
-            }
+            _deepLinkHandlerActivatedEventDisposer?.Dispose();
+            _deepLinkHandlerActivatedEventDisposer = null;
+
             CancelAuthorizeProcess();
             StopRenewLoop();
             _lifecycleCts.Cancel();
@@ -373,14 +371,18 @@ namespace EWova.Auth
         }
         public void HandleAuthenticationUrl(string url)
         {
+            InternalHandleAuthenticationUrl(url, DeepLinkInvocationType.Runtime);
+        }
+        internal void InternalHandleAuthenticationUrl(
+            string url,
+            DeepLinkInvocationType deepLinkInvocationType)
+        {
             if (string.IsNullOrWhiteSpace(url))
                 return;
-
             if (_isProcessingDeepLink)
                 return;
             _isProcessingDeepLink = true;
-
-            HandleDeepLink(url).Forget();
+            HandleDeepLink(url, deepLinkInvocationType).Forget();
         }
 
         private void CancelAuthorizeProcess()
@@ -389,7 +391,9 @@ namespace EWova.Auth
             _currentAuthorizeProcess = null;
         }
 
-        private async UniTaskVoid HandleDeepLink(string url)
+        private async UniTaskVoid HandleDeepLink(
+            string url,
+            DeepLinkInvocationType deepLinkInvocationType = DeepLinkInvocationType.Runtime)
         {
             if (IsAuthenticated)
             {
@@ -443,6 +447,9 @@ namespace EWova.Auth
                 var launchTicket = query["launch_ticket"];
                 if (!string.IsNullOrEmpty(launchTicket))
                 {
+                    if (deepLinkInvocationType == DeepLinkInvocationType.Launch)
+                        return;
+
                     if (InternalLogger.InfoEnabled)
                         InternalLogger.Info("收到 Launch Ticket 授權請求");
 
@@ -674,9 +681,11 @@ namespace EWova.Auth
                 CurrentUser = null;
             }
         }
-        private void OnDeepLinkHandlerActivated(DeepLinkHandler url)
+        private void OnDeepLinkHandlerActivated(DeepLinkHandler handler)
         {
-            HandleAuthenticationUrl(url.ActiveURL);
+            InternalHandleAuthenticationUrl(
+                handler.ActiveURL,
+                handler.ActiveInvocationType);
         }
     }
 }

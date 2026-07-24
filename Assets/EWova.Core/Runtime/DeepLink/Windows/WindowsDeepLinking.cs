@@ -8,17 +8,11 @@ namespace EWova.DeepLink.Win
     {
         // Windows .Net Framework 4.6 以上版本才支援註冊表操作
 #if (UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void AfterSceneLoad()
-        {
-            if (!WindowsDeepLinkingCore.IsInitialized) return;
-            WindowsDeepLinkingCore.ProcessCommandLineArgs();
-        }
+        public static event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
 
-        public static event Action<string> OnDeepLinkActivated
+        private static void OnDeepLinkActivatedInternal(WinActivatedDeepLink winActivated, DeepLinkInvocationType pendingType)
         {
-            add => WindowsDeepLinkingCore.OnDeepLinkActivated += value;
-            remove => WindowsDeepLinkingCore.OnDeepLinkActivated -= value;
+            OnDeepLinkActivated?.Invoke(winActivated.Uri, pendingType);
         }
 
         public static Func<string> OverrideTargetExecutablePath
@@ -46,18 +40,47 @@ namespace EWova.DeepLink.Win
                 Application.persistentDataPath
             );
 
+            if (Application.isEditor)
+            {
+                // 在編輯器模式下，檢查註冊表以處理深層連結
+                WindowsDeepLinkingCore.CheckRegistryForDeepLink();
+            }
+            else
+            {
+                // 在非編輯器模式下，處理命令列參數以處理深層連結。並清除註冊表中的深層連結值，以避免重複處理
+                WindowsDeepLinkingCore.ProcessCommandLineArgs();
+                WindowsDeepLinkingCore.ClearRegistryDeepLinkValue();
+            }
+
+            var pendingWinActivatedDeepLink = WindowsDeepLinkingCore.CurrentWinActivatedDeepLink;
+            if (pendingWinActivatedDeepLink.HasValue)
+            {
+                OnDeepLinkActivatedInternal(
+                    pendingWinActivatedDeepLink.Value
+                    , DeepLinkInvocationType.Launch);
+            }
+
+            WindowsDeepLinkingCore.OnDeepLinkActivated += WindowsDeepLinkingCore_OnDeepLinkActivated;
             Application.focusChanged += OnApplicationFocus;
+        }
+
+        private static void WindowsDeepLinkingCore_OnDeepLinkActivated(WinActivatedDeepLink obj)
+        {
+            OnDeepLinkActivatedInternal(obj, DeepLinkInvocationType.Runtime);
         }
 
         public static void ResetState()
         {
             Application.focusChanged -= OnApplicationFocus;
+            WindowsDeepLinkingCore.OnDeepLinkActivated -= WindowsDeepLinkingCore_OnDeepLinkActivated;
             WindowsDeepLinkingCore.ResetState();
         }
 
         private static void OnApplicationFocus(bool hasFocus)
         {
-            if (!hasFocus) return;
+            if (!hasFocus)
+                return;
+
             WindowsDeepLinkingCore.CheckRegistryForDeepLink();
         }
 #else

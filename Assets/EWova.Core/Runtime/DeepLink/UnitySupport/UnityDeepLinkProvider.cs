@@ -20,16 +20,18 @@ namespace EWova.DeepLink
             }
         }
 
-        public event Action<string> OnDeepLinkActivated;
+        public event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
 
-        public void Initialize(string scheme)
+        public bool ConfigureScheme(string scheme, out string errorMessage)
         {
             Application.deepLinkActivated += OnActivated;
+            errorMessage = null;
+            return true;
         }
 
         private void OnActivated(string url)
         {
-            OnDeepLinkActivated?.Invoke(url);
+            OnDeepLinkActivated?.Invoke(url, DeepLinkInvocationType.Runtime);
         }
     }
 }

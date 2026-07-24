@@ -15,16 +15,10 @@ namespace EWova
             _instance = go.AddComponent<UnityMainThreadDispatcher>();
 
 #if UNITY_EDITOR
-            static void PlayModeStateChanged(UnityEditor.PlayModeStateChange mode)
+            Authoring.EditorDomainReleaseHelper.CleanupOneShot += () =>
             {
-                if (mode == UnityEditor.PlayModeStateChange.EnteredEditMode)
-                {
-                    UnityEditor.EditorApplication.playModeStateChanged -= PlayModeStateChanged;
-                    _instance = null;
-                }
-            }
-            ;
-            UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChanged;
+                _instance = null;
+            };
 #endif
         }
 

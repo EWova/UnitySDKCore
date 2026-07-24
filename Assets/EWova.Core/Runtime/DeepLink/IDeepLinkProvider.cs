@@ -9,7 +9,7 @@ namespace EWova.DeepLink
         /// </summary>
         int Priority { get; }
         bool IsSupported { get; }
-        void Initialize(string scheme);
-        event Action<string> OnDeepLinkActivated;
+        bool ConfigureScheme(string scheme, out string errorMessage);
+        event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
     }
 }
