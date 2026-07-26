@@ -11,6 +11,7 @@ namespace EWova.DeepLink.Editor
         internal const string AssetPath = "Assets/Resources/" + DeepLinkConfig.ResourceName + ".asset";
         internal const string MenuPath = "EWova/DeepLink/Create Config";
 
+        [MenuItem(MenuPath, false, 1)]
         public static void CreateConfig()
         {
             // Ensure Resources folder exists
