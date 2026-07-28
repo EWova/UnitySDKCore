@@ -11,12 +11,12 @@ namespace EWova.Auth
     [Preserve]
     public class TokenResponse
     {
-        [JsonProperty("access_token")] public string AccessToken { get; set; } = string.Empty;
-        [JsonProperty("id_token")] public string IdToken { get; set; } = string.Empty;
-        [JsonProperty("expires_in")] public int ExpiresIn { get; set; } = 0;
-        [JsonProperty("token_type")] public string TokenType { get; set; } = string.Empty;
-        [JsonProperty("refresh_token")] public string? RefreshToken { get; set; }
-        [JsonProperty("refresh_token_expires_in")] public int? RefreshTokenExpiresIn { get; set; }
+        [Preserve, JsonProperty("access_token")] public string AccessToken { get; set; } = string.Empty;
+        [Preserve, JsonProperty("id_token")] public string IdToken { get; set; } = string.Empty;
+        [Preserve, JsonProperty("expires_in")] public int ExpiresIn { get; set; } = 0;
+        [Preserve, JsonProperty("token_type")] public string TokenType { get; set; } = string.Empty;
+        [Preserve, JsonProperty("refresh_token")] public string? RefreshToken { get; set; }
+        [Preserve, JsonProperty("refresh_token_expires_in")] public int? RefreshTokenExpiresIn { get; set; }
     }
 #nullable disable
 }

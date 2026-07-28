@@ -20,12 +20,15 @@ public sealed class JwtObject
 [Preserve]
 public sealed class JwtHeader
 {
+    [Preserve]
     [JsonProperty("alg")]
     public string Algorithm { get; set; }
 
+    [Preserve]
     [JsonProperty("typ")]
     public string Type { get; set; }
 
+    [Preserve]
     [JsonProperty("kid")]
     public string KeyId { get; set; }
 }
@@ -34,21 +37,27 @@ public sealed class JwtHeader
 [Preserve]
 public sealed class JwtPayload
 {
+    [Preserve]
     [JsonProperty("nonce")]
     public string Nonce { get; set; }
 
+    [Preserve]
     [JsonProperty("iss")]
     public string Issuer { get; set; }
 
+    [Preserve]
     [JsonProperty("aud")]
     public string Audience { get; set; }
 
+    [Preserve]
     [JsonProperty("exp")]
     public long Expiry { get; set; }
 
+    [Preserve]
     [JsonProperty("sub")]
     public string Subject { get; set; }
 
+    [Preserve]
     [JsonExtensionData]
     public Dictionary<string, JToken> AdditionalClaims { get; set; }
 }
