@@ -6,9 +6,12 @@ using System.Threading;
 
 using EWova.Networking;
 
+using UnityEngine.Scripting;
+
 namespace EWova.Auth
 {
     [Serializable]
+    [Preserve]
     public class LaunchTicketResponse
     {
         public string launchTicket;
