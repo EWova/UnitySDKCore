@@ -8,6 +8,7 @@ using System.Threading;
 using System.Net;
 using UnityEngine.Networking;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace EWova.Networking
 {
@@ -227,20 +228,26 @@ namespace EWova.Networking
             NullValueHandling = NullValueHandling.Ignore
         };
 
+        [Preserve]
         public class UnitySdkHeader
         {
+            [Preserve]
             [JsonProperty("coreVersion")]
             public string CoreVersion { get; set; } = string.Empty;
 
+            [Preserve]
             [JsonProperty("packages")]
             public List<SdkPackageInfo> Packages { get; set; } = new();
         }
 
+        [Preserve]
         public class SdkPackageInfo
         {
+            [Preserve]
             [JsonProperty("name")]
             public string Name { get; set; } = string.Empty;
 
+            [Preserve]
             [JsonProperty("version")]
             public string Version { get; set; } = string.Empty;
         }
