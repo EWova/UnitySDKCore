@@ -36,6 +36,7 @@ namespace EWova
             {
                 disposer.Dispose();
                 InvocationContext = null;
+                _clientProjectAppId = null;
             };
 #endif
         }
