@@ -4,6 +4,7 @@ using EWova.DeepLink;
 using EWova.Networking;
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Security.Cryptography;
@@ -96,6 +97,7 @@ namespace EWova.Auth
         }
 
         public bool IsAuthenticated => CurrentAuthState == AuthState.Authenticated || CurrentAuthState == AuthState.RefreshingToken;
+        public string ClientId => _authConfig.ClientId;
         public AuthState CurrentAuthState { get; internal set; }
         public UserProfile CurrentUser { get; internal set; }
         public event Action<AuthState> OnAuthStateChanged;
@@ -332,44 +334,42 @@ namespace EWova.Auth
                 process?.Dispose();
             }
         }
-        public async UniTask LaunchEWovaAppWithLoginAsync(string requestAppId, Guid? worldId = null, int? spaceId = null, CancellationToken ct = default)
+        /// <summary>
+        /// 在已驗證狀態下，向後端換發一張 <c>launch_ticket</c>，可用來讓 EWova App 兌換並延續目前的登入狀態。
+        /// 呼叫前會先確保 access token 為最新狀態。
+        /// </summary>
+        /// <param name="requestAppId">要求換票的來源應用程式 id。</param>
+        /// <exception cref="InvalidOperationException">尚未處於已驗證狀態時拋出。</exception>
+        public async UniTask<string> CreateLaunchTicketAsync(string requestAppId, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(requestAppId))
                 throw new ArgumentNullException(nameof(requestAppId));
 
             if (CurrentAuthState != AuthState.Authenticated && CurrentAuthState != AuthState.RefreshingToken)
-                throw new InvalidOperationException("未處於認證狀態，無法啟動 EWova App。");
+                throw new InvalidOperationException("未處於認證狀態，無法建立 launch ticket。");
 
             await RefreshAccessTokenAsync(ct);
 
-            string launchTicket;
-            try
-            {
-                var rsp = await _tokenService.CreateLaunchTicketAsync(CurrentTokens.AccessToken, requestAppId, ct);
-                launchTicket = rsp.launchTicket;
-            }
-            catch (ApiException ex)
-            {
-                InternalLogger.Warn($"無法取得 launch ticket，無法啟動 EWova App: {ex.Message}");
-                return;
-            }
-            catch (Exception ex)
-            {
-                InternalLogger.Err($"取得 launch ticket 時發生錯誤: {ex.Message}");
-                return;
-            }
+            var rsp = await _tokenService.CreateLaunchTicketAsync(CurrentTokens.AccessToken, requestAppId, ct);
+            return rsp.launchTicket;
+        }
 
-            var launchUrl = AuthRequestBuilder.BuildLaunchEWovaAppUrlWithLaunchTick(
-                EWovaApp.DeepLinkScheme,
-                requestAppId,
-                null,
-                worldId,
-                spaceId);
+        public async UniTask LaunchEWovaAppWithLoginAsync(string requestAppId, Guid? worldId = null, int? spaceId = null, CancellationToken ct = default)
+        {
+            if (string.IsNullOrEmpty(requestAppId))
+                throw new ArgumentNullException(nameof(requestAppId));
+
+            var extraQuery = new Dictionary<string, string>();
+            if (worldId.HasValue)
+                extraQuery[EWovaAppInvocationContext.WorldIdKey] = worldId.Value.ToString();
+            if (spaceId.HasValue)
+                extraQuery[EWovaAppInvocationContext.SpaceIdKey] = spaceId.Value.ToString();
 
             if (InternalLogger.InfoEnabled)
-                InternalLogger.Info($"嘗試啟動 EWova App，URL: {launchUrl}");
+                InternalLogger.Info($"嘗試啟動 EWova App，appId={requestAppId}, worldId={worldId}, spaceId={spaceId}");
 
-            Application.OpenURL(launchUrl);
+            string deepLink = await EWovaApp.GetDeepLink(EWovaDeepLinkLaunchOption.JustLaunch, requestAppId, extraQuery, ct);
+            Application.OpenURL(deepLink);
         }
         public void Logout()
         {

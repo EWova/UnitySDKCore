@@ -35,35 +35,6 @@ namespace EWova.Auth
             return $"{config.BaseAuthUrl}{config.AuthorizationEndpoint}?{query}";
         }
 
-        public static string BuildLaunchEWovaAppUrlWithLaunchTick(
-            string url,
-            string fromAppId,
-            string launchTicket,
-            Guid? worldId = null,
-            int? spaceInstanceIndex = null)
-        {
-            var query = BuildQueryString(new Dictionary<string, string>
-            {
-                ["appId"] = EscapeDataStringOrNull(fromAppId),
-                ["launchTicket"] = EscapeDataStringOrNull(launchTicket),
-                ["wid"] = worldId.HasValue ? EscapeDataStringOrNull(worldId.Value.ToString()) : null,
-                ["sid"] = spaceInstanceIndex.HasValue ? EscapeDataStringOrNull(spaceInstanceIndex.Value.ToString()) : null,
-            });
-            return $"{url}?{query}";
-        }
-        public static string BuildLaunchEWovaAppUrl(
-            string url,
-            Guid? worldId = null,
-            int? spaceInstanceIndex = null)
-        {
-            var query = BuildQueryString(new Dictionary<string, string>
-            {
-                ["wid"] = worldId.HasValue ? EscapeDataStringOrNull(worldId.Value.ToString()) : null,
-                ["sid"] = spaceInstanceIndex.HasValue ? EscapeDataStringOrNull(spaceInstanceIndex.Value.ToString()) : null,
-            });
-            return $"{url}?{query}";
-        }
-
         public static string BuildExchangeCodeBody(
             EWovaAuthConfig config,
             string code,
