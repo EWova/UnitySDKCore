@@ -116,17 +116,17 @@ namespace EWova.Auth
                 return;
             }
         }
-        [ContextMenu("Try Get Launch Ticket")]
-        public void TryGetLaunchTicket()
-        {
-            IAuthManager auth = EWovaAuth.Instance;
-            if (auth.CurrentAuthState != AuthState.Authenticated)
-            {
-                Debug.LogWarning("User is not authenticated.");
-                return;
-            }
-            EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
-        }
+        //[ContextMenu("Try Get Launch Ticket")]
+        //public void TryGetLaunchTicket()
+        //{
+        //    IAuthManager auth = EWovaAuth.Instance;
+        //    if (auth.CurrentAuthState != AuthState.Authenticated)
+        //    {
+        //        Debug.LogWarning("User is not authenticated.");
+        //        return;
+        //    }
+        //    EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
+        //}
 
         public bool IsSupport(RuntimePlatform runtimePlatform)
         {

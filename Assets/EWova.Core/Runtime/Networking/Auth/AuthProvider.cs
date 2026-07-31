@@ -356,23 +356,6 @@ namespace EWova.Auth
             return rsp.launchTicket;
         }
 
-        public async UniTask LaunchEWovaAppWithLoginAsync(string requestAppId, Guid? worldId = null, int? spaceId = null, CancellationToken ct = default)
-        {
-            if (string.IsNullOrEmpty(requestAppId))
-                throw new ArgumentNullException(nameof(requestAppId));
-
-            var extraQuery = new Dictionary<string, string>();
-            if (worldId.HasValue)
-                extraQuery[EWovaAppInvocationContext.WorldIdKey] = worldId.Value.ToString();
-            if (spaceId.HasValue)
-                extraQuery[EWovaAppInvocationContext.SpaceIdKey] = spaceId.Value.ToString();
-
-            if (InternalLogger.InfoEnabled)
-                InternalLogger.Info($"嘗試啟動 EWova App，appId={requestAppId}, worldId={worldId}, spaceId={spaceId}");
-
-            string deepLink = await EWovaApp.GetDeepLink(EWovaDeepLinkLaunchOption.JustLaunch, requestAppId, extraQuery, ct);
-            Application.OpenURL(deepLink);
-        }
         public void Logout()
         {
             CancelAuthorizeProcess();

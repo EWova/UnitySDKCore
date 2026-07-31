@@ -128,18 +128,18 @@ namespace EWova.Core.Tests
             Debug.Log("User logged out.");
         }
 
-        public string AppId = "019d417e-29e6-7832-9ca8-7c3469d77991";
-        [ContextMenu("Try launch ewova by CreateLaunchTicket")]
-        public void TryCreateLaunchTicket()
-        {
-            IAuthManager auth = EWovaAuth.Instance;
-            if (auth.CurrentAuthState != AuthState.Authenticated)
-            {
-                Debug.LogWarning("User is not authenticated.");
-                return;
-            }
-            EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
-        }
+        //public string AppId = "019d417e-29e6-7832-9ca8-7c3469d77991";
+        //[ContextMenu("Try launch ewova by CreateLaunchTicket")]
+        //public void TryCreateLaunchTicket()
+        //{
+        //    IAuthManager auth = EWovaAuth.Instance;
+        //    if (auth.CurrentAuthState != AuthState.Authenticated)
+        //    {
+        //        Debug.LogWarning("User is not authenticated.");
+        //        return;
+        //    }
+        //    //EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
+        //}
 
         [ContextMenu("DEEPLINK")]
         public void Deeplink() 
