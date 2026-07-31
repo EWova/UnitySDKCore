@@ -175,29 +175,29 @@ namespace EWova.Auth
                 }
             }
         }
-        public static bool IsSupportAuthorizeViaDeepLink
-            => IsDeepLinkHandlerAvailable;
+        public bool IsSupportAuthorizeViaDeepLink { get; private set; } = false;
 
-        private static bool IsDeepLinkHandlerAvailable
-            => DeepLinkHandler.IsSupported;
-
-        protected AuthProvider(EWovaAuthConfig authConfig, Logger logger = null)
+        protected AuthProvider(
+            EWovaAuthConfig authConfig,
+            DeepLinkHandler deepLinkHandler,
+            Logger logger = null)
         {
             _authConfig = authConfig ?? throw new ArgumentNullException(nameof(authConfig));
             InternalLogger = logger ?? new Logger($"[EWova]{this.GetType().Name} ", LogLevel.Full);
 
-            var deepLinkHandler = DeepLinkHandler.Default;
-
-            if (InternalLogger.InfoEnabled)
-                InternalLogger.Info($"成功載入 Resource/{DeepLinkConfig.ResourceName}，AppScheme 設定為：{deepLinkHandler.Scheme}");
-
-            if (!IsDeepLinkHandlerAvailable)
+            if (deepLinkHandler != null && !deepLinkHandler.IsDummy)
             {
-                if (InternalLogger.WarnEnabled)
-                    InternalLogger.Warn("當前平台不支援 DeepLink，這會導致跳轉登入無法正常工作，無法使用 AuthorizeViaBrowser 功能。");
+                IsSupportAuthorizeViaDeepLink = true;
+                _deepLinkHandlerActivatedEventDisposer = deepLinkHandler.ContinueWith(OnDeepLinkHandlerActivated);
+                if (InternalLogger.InfoEnabled)
+                    InternalLogger.Info($"成功建立 AuthProvider，支援 DeepLink Scheme: {deepLinkHandler.Scheme}，可使用 AuthorizeViaBrowser 功能。");
             }
-
-            _deepLinkHandlerActivatedEventDisposer = deepLinkHandler.ContinueWith(OnDeepLinkHandlerActivated);
+            else
+            {
+                IsSupportAuthorizeViaDeepLink = false;
+                if (InternalLogger.WarnEnabled)
+                    InternalLogger.Warn("成功建立 AuthProvider，但不支援 DeepLink，這會導致跳轉登入無法正常工作，無法使用 AuthorizeViaBrowser 功能。");
+            }
 
             _tokenService = new TokenService(this, _authConfig);
             if (CurrentAuthState == AuthState.Initializing)
@@ -301,8 +301,18 @@ namespace EWova.Auth
             Application.OpenURL(authorizeUrl);
             return _currentAuthorizeProcess;
         }
+        /// <summary>
+        /// 使用系統瀏覽器進行授權流程，並等待授權結果回傳。此方法會在授權完成或失敗後返回 <see cref="AuthorizeResult"/>，可用於非同步流程中直接取得授權結果。
+        /// </summary>
+        /// <param name="options">登入行為選項，若為 null 則使用預設值。</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotSupportedException"></exception>
         public async UniTask<AuthorizeResult> AuthorizeViaBrowserAsync(AuthorizeViaBrowserOptions? options = null, CancellationToken cancellationToken = default)
         {
+            if (!IsSupportAuthorizeViaDeepLink)
+                throw new NotSupportedException("此 AuthProvider 未支援任何註冊的 DeepLinkReceiver，無法使用 AuthorizeViaBrowser 進行授權流程。");
+
             var tcs = new UniTaskCompletionSource<AuthorizeResult>();
             IAuthorizeProcess process = null;
 
