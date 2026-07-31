@@ -99,7 +99,10 @@ namespace EWova.Auth
         }
 
         public bool IsAuthenticated => CurrentAuthState == AuthState.Authenticated || CurrentAuthState == AuthState.RefreshingToken;
-        public string ClientId => _authConfig.ClientId;
+        /// <summary>
+        /// 目前使用的應用程式 ID，通常用於向後端換發 launch_ticket 或其他授權用途。
+        /// </summary>
+        public virtual string AppId { get; }
         public AuthState CurrentAuthState { get; internal set; }
         public UserProfile CurrentUser { get; internal set; }
         public event Action<AuthState> OnAuthStateChanged;
@@ -478,16 +481,13 @@ namespace EWova.Auth
 
                 var code = query["code"];
                 var state = query["state"];
-
                 if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(state))
                 {
                     if (authProcessing == null)
                     {
-                        if (Time.realtimeSinceStartup < 1f)
+                        if (deepLinkInvocationType == DeepLinkInvocationType.Launch)
                         {
-                            // 這一段可能是 Windows 冷啟動所帶入的 URL，沒有被清理掉的授權流程
-                            if (InternalLogger.WarnEnabled)
-                                InternalLogger.Warn("收到 URL 但沒有有效的授權流程正在進行，嘗試清理過期的授權流程並重新處理 URL。");
+                            // 可能是冷啟動或其他 Provider 的 DeepLink 回調，忽略處理
                             return;
                         }
                         HandleAuthFailure("沒有有效的授權流程正在進行，無法處理授權回調。");

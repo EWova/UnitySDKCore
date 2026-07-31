@@ -16,11 +16,13 @@ namespace EWova
     {
         JustLaunch = 0,
 
-        BackToWorld = 1 << 0,
+        Login = (1 << 0),
 
-        BackToWorldAndSpaceInstance = BackToWorld | 1 << 1,
+        WithWorld = (1 << 1),
 
-        Default = BackToWorldAndSpaceInstance
+        WithWorldAndSpaceInstance = WithWorld | (1 << 2),
+
+        Default = Login | WithWorldAndSpaceInstance
     }
 
     public static class EWovaApp
@@ -36,7 +38,6 @@ namespace EWova
             {
                 disposer.Dispose();
                 InvocationContext = null;
-                _clientProjectAppId = null;
             };
 #endif
         }
@@ -51,22 +52,12 @@ namespace EWova
         /// </summary>
         public static string DeepLinkPrefix = $"{DeepLinkScheme}://";
 
-        // TODO: 邏輯可能有問題
-        /// <summary>
-        /// 客戶端提供的 Project AppId，若要使用 Deep Link 取得 Launch Ticket，請先設定此值。
-        /// </summary>
-        public static string ClientProjectAppId
-        {
-            set => _clientProjectAppId = value;
-        }
-        private static string _clientProjectAppId = null;
-
-
         /// <summary>
         /// 取得 Deep Link URL，並可選擇附帶世界或空間資訊。 並附帶 Launch Ticket 讓 EWova App 可延續登入狀態。(需先設定  EWovaApp.AppId )
         /// </summary>
         public static async UniTask<string> GetDeepLink(
             EWovaDeepLinkLaunchOption option,
+            AuthProvider authProvider = null,
             IReadOnlyDictionary<string, string> extraQuery = null,
             CancellationToken ct = default)
         {
@@ -78,17 +69,22 @@ namespace EWova
 
             var queryDict = BuildContextQuery(option);
 
-            if (!string.IsNullOrEmpty(_clientProjectAppId))
+            bool wannaLogin = (option & EWovaDeepLinkLaunchOption.Login) != 0;
+            if (wannaLogin)
             {
-                try
+                authProvider ??= EWovaAuth.Instance;
+                if (!string.IsNullOrEmpty(authProvider.AppId))
                 {
-                    string launchTicket = await EWovaAuth.Instance.CreateLaunchTicketAsync(_clientProjectAppId, ct);
-                    if (!string.IsNullOrEmpty(launchTicket))
-                        queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。get launch_ticket error detail:{ex.Message}");
+                    try
+                    {
+                        string launchTicket = await EWovaAuth.Instance.CreateLaunchTicketAsync(authProvider.AppId, ct);
+                        if (!string.IsNullOrEmpty(launchTicket))
+                            queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。get launch_ticket error detail:{ex.Message}");
+                    }
                 }
             }
 
@@ -118,11 +114,11 @@ namespace EWova
             var queryDict = new Dictionary<string, string>();
 
             bool backToWorld =
-                (option & EWovaDeepLinkLaunchOption.BackToWorld) != 0;
+                (option & EWovaDeepLinkLaunchOption.WithWorld) != 0;
 
             bool backToWorldAndSpace =
-                (option & EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance) ==
-                EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance;
+                (option & EWovaDeepLinkLaunchOption.WithWorldAndSpaceInstance) ==
+                EWovaDeepLinkLaunchOption.WithWorldAndSpaceInstance;
 
             if (backToWorld &&
                 InvocationContext?.WorldGuid is Guid worldGuid)
@@ -143,28 +139,14 @@ namespace EWova
 
         public static void LaunchViaDeepLink(
             EWovaDeepLinkLaunchOption option = EWovaDeepLinkLaunchOption.Default,
+            AuthProvider authProvider = null,
             IReadOnlyDictionary<string, string> extraQuery = null)
         {
-            LaunchViaDeepLinkAsync(option, extraQuery).Forget();
-        }
-
-        private static async UniTaskVoid LaunchViaDeepLinkAsync(
-            EWovaDeepLinkLaunchOption option,
-            IReadOnlyDictionary<string, string> extraQuery)
-        {
-            if (option == EWovaDeepLinkLaunchOption.Default)
+            GetDeepLink(option, authProvider, extraQuery).ContinueWith(url =>
             {
-                if (InvocationContext != null)
-                {
-                    option = EWovaDeepLinkLaunchOption.BackToWorldAndSpaceInstance;
-                }
-                else
-                {
-                    option = EWovaDeepLinkLaunchOption.JustLaunch;
-                }
-            }
-            string deepLink = await GetDeepLink(option, extraQuery);
-            Application.OpenURL(deepLink);
+                if (!string.IsNullOrEmpty(url))
+                    Application.OpenURL(url);
+            });
         }
 
         private static void LoadFromDeepLink(DeepLinkHandler handler)

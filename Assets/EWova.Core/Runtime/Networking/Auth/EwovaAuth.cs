@@ -7,6 +7,7 @@ namespace EWova.Auth
     public class EWovaAuth : AuthProvider
     {
         public readonly static EWovaAuth Instance = new();
+        public override string AppId => null;
 
         internal EWovaAuth()
             : base(EWovaAuthConfigFactory.Create(options =>
