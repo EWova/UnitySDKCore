@@ -392,6 +392,7 @@ namespace EWova.Auth
             _isProcessingDeepLink = true;
             HandleDeepLink(url, deepLinkInvocationType).Forget();
         }
+        protected virtual void InternalOnAuthStateChanged(AuthState authState) { }
 
         private void CancelAuthorizeProcess()
         {
@@ -679,8 +680,10 @@ namespace EWova.Auth
         }
         private void SetState(AuthState newState)
         {
-            if (CurrentAuthState == newState) return;
+            if (CurrentAuthState == newState)
+                return;
             CurrentAuthState = newState;
+            InternalOnAuthStateChanged(newState);
             OnAuthStateChanged?.Invoke(newState);
 
             if (newState == AuthState.Authenticated)
