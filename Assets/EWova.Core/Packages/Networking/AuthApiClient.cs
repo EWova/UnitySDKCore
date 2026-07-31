@@ -23,6 +23,13 @@ namespace EWova.Networking
         protected readonly string _baseUrl;
         protected readonly IAuthManager _auth;
 
+        /// <summary>
+        /// 所有透過此 Client 發出的 HTTP 請求逾時秒數（對應 UnityWebRequest.timeout）。
+        /// 若伺服器接受連線後不回應（例如防火牆靜默丟包），沒有逾時將導致請求無限期掛起，
+        /// 對於背景 token 刷新等流程會造成永久卡死，因此預設必須有一個合理的逾時值。
+        /// </summary>
+        public static int DefaultRequestTimeoutSeconds { get; set; } = 30;
+
         public LogLevel LoggerLevel
         {
             get => _logger.PrintLevel;

@@ -332,6 +332,7 @@ namespace EWova.Networking
                 token.ThrowIfCancellationRequested();
 
                 request = new UnityWebRequest(task.Uri, task.Method);
+                request.timeout = DefaultRequestTimeoutSeconds;
 
                 if (!string.IsNullOrEmpty(task.BodyString))
                 {

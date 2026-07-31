@@ -27,6 +27,12 @@ namespace EWova
 
         public static void Enqueue(Action action)
         {
+            if (_instance == null)
+            {
+                Debug.LogWarning("[EWova]UnityMainThreadDispatcher.Enqueue called before initialization or after teardown; action was dropped.");
+                return;
+            }
+
             _instance._mainThreadActions.Enqueue(action);
         }
 

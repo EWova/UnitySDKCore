@@ -131,16 +131,22 @@ namespace EWova.Auth
 
                 _currentTokens = value;
 
-                try
+                // 部分 AS 在 refresh_token 流程不會回傳 id_token，此時 value.Jwt 為 null，
+                // 屬正常情況（見 TokenSet.Jwt 說明），應保留既有的 CurrentUser 而非清空，
+                // 避免使用者資訊在每次背景續期後憑空消失。
+                if (value.Jwt != null)
                 {
-                    CurrentUser = UserProfile.FromJwt(value.Jwt, DateTimeOffset.UtcNow);
-                }
-                catch (Exception ex)
-                {
-                    if (InternalLogger.ErrorEnabled)
-                        InternalLogger.Err($"JWT parse failed. {ex.Message}");
+                    try
+                    {
+                        CurrentUser = UserProfile.FromJwt(value.Jwt, DateTimeOffset.UtcNow);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (InternalLogger.ErrorEnabled)
+                            InternalLogger.Err($"JWT parse failed. {ex.Message}");
 
-                    CurrentUser = null;
+                        CurrentUser = null;
+                    }
                 }
 
                 if (InternalLogger.InfoEnabled)
@@ -380,7 +386,11 @@ namespace EWova.Auth
             if (string.IsNullOrWhiteSpace(url))
                 return;
             if (_isProcessingDeepLink)
+            {
+                if (InternalLogger.WarnEnabled)
+                    InternalLogger.Warn("已有一個 Deep Link 驗證流程正在處理中，本次重複觸發的回呼已被忽略。");
                 return;
+            }
             _isProcessingDeepLink = true;
             HandleDeepLink(url, deepLinkInvocationType).Forget();
         }
@@ -613,9 +623,18 @@ namespace EWova.Auth
             catch (Exception ex)
             {
                 if (ex is RefreshTokenExpiredException)
+                {
                     Logout();
+                }
                 else if (CurrentAuthState == AuthState.RefreshingToken)
-                    SetState(AuthState.Authenticated);
+                {
+                    // Refresh 失敗（例如逾時、5xx）不代表 CurrentTokens 已更新成功；
+                    // 只有在舊 access token 仍未過期時才可以維持已認證狀態，
+                    // 否則必須反映為未認證，避免呼叫端誤以為 token 仍然有效。
+                    SetState(CurrentTokens != null && !CurrentTokens.IsAccessTokenExpired
+                        ? AuthState.Authenticated
+                        : AuthState.Unauthenticated);
+                }
                 throw;
             }
             finally

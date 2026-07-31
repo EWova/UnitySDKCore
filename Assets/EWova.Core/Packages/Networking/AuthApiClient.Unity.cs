@@ -33,6 +33,7 @@ namespace EWova.Networking
             var token = task.CancellationToken;
 
             using var request = new UnityWebRequest(task.Uri, UnityWebRequest.kHttpVerbGET);
+            request.timeout = DefaultRequestTimeoutSeconds;
 
 #if UNITY_6000_0_OR_NEWER
             var downloadHandler = new DownloadHandlerTexture();

@@ -119,7 +119,9 @@ namespace EWova.Auth
                 }
                 catch (Exception ex)
                 {
-                    if (ex is RefreshTokenExpiredException)
+                    // RefreshTokenExpiredException 與 JwtException 都是確定性錯誤（token 已過期 / id_token 格式錯誤），
+                    // 重試不會改變結果，應立即拋出，避免浪費重試次數在注定失敗的請求上。
+                    if (ex is RefreshTokenExpiredException || ex is JwtException)
                         throw;
                     if (attempt == maxRetries - 1)
                         throw;
