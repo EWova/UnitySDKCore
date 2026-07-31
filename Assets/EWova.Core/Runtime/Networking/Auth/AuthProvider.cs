@@ -486,12 +486,7 @@ namespace EWova.Auth
                 {
                     if (authProcessing == null)
                     {
-                        if (deepLinkInvocationType == DeepLinkInvocationType.Launch)
-                        {
-                            // 可能是冷啟動或其他 Provider 的 DeepLink 回調，忽略處理
-                            return;
-                        }
-                        HandleAuthFailure("沒有有效的授權流程正在進行，無法處理授權回調。");
+                        //HandleAuthFailure("沒有有效的授權流程正在進行，無法處理授權回調。");
                         return;
                     }
 

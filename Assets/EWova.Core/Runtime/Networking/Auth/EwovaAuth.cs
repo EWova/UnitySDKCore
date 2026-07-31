@@ -2,11 +2,21 @@ using EWova.DeepLink;
 
 using System.Collections.Generic;
 
+using UnityEngine;
+
 namespace EWova.Auth
 {
     public class EWovaAuth : AuthProvider
     {
-        public readonly static EWovaAuth Instance = new();
+        public static EWovaAuth Instance
+        {
+            get
+            {
+                _instance ??= new EWovaAuth();
+                return _instance;
+            }
+        }
+        private static EWovaAuth _instance;
         public override string AppId => null;
 
         internal EWovaAuth()

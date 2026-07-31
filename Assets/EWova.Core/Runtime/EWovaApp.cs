@@ -5,6 +5,7 @@ using EWova.DeepLink;
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 
 using UnityEngine;
@@ -77,13 +78,14 @@ namespace EWova
                 {
                     try
                     {
-                        string launchTicket = await EWovaAuth.Instance.CreateLaunchTicketAsync(authProvider.AppId, ct);
+                        string launchTicket = await authProvider.CreateLaunchTicketAsync(authProvider.AppId, ct);
                         if (!string.IsNullOrEmpty(launchTicket))
                             queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
                     }
                     catch (Exception ex)
                     {
-                        Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。get launch_ticket error detail:{ex.Message}");
+                        Debug.LogException(ex);
+                        Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。");
                     }
                 }
             }

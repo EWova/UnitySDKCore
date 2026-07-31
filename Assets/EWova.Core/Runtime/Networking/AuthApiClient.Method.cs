@@ -28,7 +28,7 @@ namespace EWova.Networking
             public string BackendUrlOrAbsUrl { get; private set; }
             public string Method { get; private set; }
             public string AcceptType { get; private set; }
-            public Dictionary<string, string> Headers { get; private set; }
+            public Dictionary<string, string> Headers { get; private set; } = new Dictionary<string, string>();
             public string BodyString { get; private set; }
             public string ContentType { get; private set; }
             public bool IsAbsoluteUrl { get; private set; }
@@ -108,7 +108,9 @@ namespace EWova.Networking
                 if (AcceptType != null)
                     headers["Accept"] = AcceptType;
 
-                Headers = headers;
+                foreach (var kv in headers)
+                    Headers[kv.Key] = kv.Value;
+
                 Handler = authApiClient;
                 BaseUrl = authApiClient._baseUrl;
                 TaskId = authApiClient._requestIndex++;
