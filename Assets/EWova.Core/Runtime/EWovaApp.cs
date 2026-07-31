@@ -88,7 +88,7 @@ namespace EWova
                 }
                 catch (Exception ex)
                 {
-                    Logger.Default.Warn($"取得 launch ticket 失敗，將以未登入狀態組出 Deep Link: {ex.Message}");
+                    Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。get launch_ticket error detail:{ex.Message}");
                 }
             }
 
