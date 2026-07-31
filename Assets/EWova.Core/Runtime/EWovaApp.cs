@@ -27,15 +27,6 @@ namespace EWova
     {
         public const string DeepLinkScheme = "ewova";
 
-        /// <summary>
-        /// Deep Link query 中，代表發起啟動請求的應用程式 id 的 key。
-        /// </summary>
-        public const string AppIdKey = "appId";
-        /// <summary>
-        /// Deep Link query 中，代表登入延續票證的 key，用於穿插啟動（讓 EWova App 兌換並延續目前的登入狀態）。
-        /// </summary>
-        public const string LaunchTicketKey = "launchTicket";
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
@@ -89,13 +80,11 @@ namespace EWova
 
             if (!string.IsNullOrEmpty(requestLaunchTicketAppId))
             {
-                queryDict[AppIdKey] = requestLaunchTicketAppId;
-
                 try
                 {
                     string launchTicket = await EWovaAuth.Instance.CreateLaunchTicketAsync(requestLaunchTicketAppId, ct);
                     if (!string.IsNullOrEmpty(launchTicket))
-                        queryDict[LaunchTicketKey] = launchTicket;
+                        queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
                 }
                 catch (Exception ex)
                 {

@@ -23,6 +23,8 @@ namespace EWova.Auth
         /// </summary>
         public static bool EnableMockDeepLinkReceiver = true;
 
+        public const string LaunchTicketQueryKey = "launch_ticket";
+
         private sealed class AuthorizeProcess : IAuthorizeProcess
         {
             private bool _disposed;
@@ -464,7 +466,7 @@ namespace EWova.Auth
                     return;
                 }
 
-                var launchTicket = query["launch_ticket"];
+                var launchTicket = query[LaunchTicketQueryKey];
                 if (!string.IsNullOrEmpty(launchTicket))
                 {
                     if (deepLinkInvocationType == DeepLinkInvocationType.Launch)
