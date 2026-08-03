@@ -128,21 +128,31 @@ namespace EWova.Core.Tests
             Debug.Log("User logged out.");
         }
 
-        //public string AppId = "019d417e-29e6-7832-9ca8-7c3469d77991";
-        //[ContextMenu("Try launch ewova by CreateLaunchTicket")]
-        //public void TryCreateLaunchTicket()
-        //{
-        //    IAuthManager auth = EWovaAuth.Instance;
-        //    if (auth.CurrentAuthState != AuthState.Authenticated)
-        //    {
-        //        Debug.LogWarning("User is not authenticated.");
-        //        return;
-        //    }
-        //    //EWovaAuth.Instance.LaunchEWovaAppWithLoginAsync(AppId).Forget();
-        //}
+        public string AppId = "019d417e-29e6-7832-9ca8-7c3469d77991";
+        public string AccToken = "";
+        [ContextMenu("Try launch ewova by CreateLaunchTicket")]
+        public void TryCreateLaunchTicket()
+        {
+            // get auth _tokenService
+            var _tokenService = EWovaAuth.Instance
+                .GetType()
+                .GetField("_tokenService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .GetValue(EWovaAuth.Instance) as TokenService;
+            if (_tokenService != null)
+            {
+                _tokenService.CreateLaunchTicketAsync(AccToken, AppId).ContinueWith(task =>
+                {
+                    Debug.Log($"CreateLaunchTicketAsync result: {task.launchTicket}");
+                });
+            }
+            else
+            {
+                Debug.LogError("Failed to get _tokenService from auth.");
+            }
+        }
 
         [ContextMenu("DEEPLINK")]
-        public void Deeplink() 
+        public void Deeplink()
         {
             Application.OpenURL("example://call?hello_world=123");
         }

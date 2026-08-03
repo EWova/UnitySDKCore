@@ -37,9 +37,12 @@ namespace EWova.DeepLink
                 instances.Add(provider);
             }
 
-            return instances
-                .OrderByDescending(x => x.Priority)
-                .FirstOrDefault();
+            if (instances.Count != 0)
+                return instances
+                    .OrderByDescending(x => x.Priority)
+                    .FirstOrDefault();
+
+            return Activator.CreateInstance(typeof(BlankProvider)) as IDeepLinkProvider;
         }
     }
 }

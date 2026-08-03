@@ -121,8 +121,8 @@ namespace EWova.DeepLink
                 throw new ArgumentNullException(nameof(scheme));
 
             var handler = new DeepLinkHandler(scheme);
-            s_defaultProvider.OnDeepLinkActivated += handler.OnDeepLinkActivated;
 
+            s_defaultProvider.OnDeepLinkActivated += handler.OnDeepLinkActivated;
             if (!s_defaultProvider.ConfigureScheme(scheme, out var errorMsg))
             {
                 if (Logger.ErrorEnabled)

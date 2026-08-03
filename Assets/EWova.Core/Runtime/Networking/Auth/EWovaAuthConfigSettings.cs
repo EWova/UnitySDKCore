@@ -19,7 +19,7 @@ namespace EWova.Auth
             string appScheme = DeepLinkHandler.Default.Scheme;
 
             if (string.IsNullOrEmpty(appScheme))
-                throw new System.InvalidOperationException("DeepLinkHandler.Default.Scheme is not set. Please ensure that the deep link scheme is configured correctly.");
+                appScheme = "blank-app-scheme";
 
             var opts = new Options();
             options?.Invoke(opts);
