@@ -457,10 +457,15 @@ namespace EWova.Auth
                 if (!string.IsNullOrEmpty(launchTicket))
                 {
                     if (deepLinkInvocationType == DeepLinkInvocationType.Launch)
-                        return;
-
-                    if (InternalLogger.InfoEnabled)
-                        InternalLogger.Info("收到 Launch Ticket 授權請求");
+                    {
+                        if (InternalLogger.InfoEnabled)
+                            InternalLogger.Info("冷啟動 DeepLink 回調");
+                    }
+                    else
+                    {
+                        if (InternalLogger.InfoEnabled)
+                            InternalLogger.Info("收到 Launch Ticket 授權請求");
+                    }
 
                     SetState(AuthState.Authenticating);
                     var tokenSet = await _tokenService.ExchangeLaunchTicketAsync(launchTicket, _lifecycleCts.Token);

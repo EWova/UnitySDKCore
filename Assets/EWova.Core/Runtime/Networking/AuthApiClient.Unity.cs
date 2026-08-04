@@ -13,6 +13,7 @@ namespace EWova.Networking
         public async UniTask<Texture2D> GetTex2D(
             string url,
             bool isAbsoluteUrl = false,
+            IProgress<float> progress = null,
             CancellationToken ct = default)
         {
             var task = new RequestTask
@@ -24,6 +25,7 @@ namespace EWova.Networking
                 body: null,
                 contentType: null,
                 throwApiExceptionFor4xxResponses: true,
+                progress: progress,
                 ct: ct
             );
             task.HandleRequest(this);
@@ -53,7 +55,7 @@ namespace EWova.Networking
 
             try
             {
-                await request.SendWebRequest().ToUniTask(cancellationToken: token);
+                await request.SendWebRequest().ToUniTask(task.Progress, cancellationToken: token);
 
                 Texture2D tex;
 

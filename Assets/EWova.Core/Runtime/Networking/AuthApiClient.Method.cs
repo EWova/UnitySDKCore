@@ -44,6 +44,7 @@ namespace EWova.Networking
             /// 預設為 true。
             /// </summary>
             public bool ThrowApiExceptionFor4xxResponses { get; set; } = true;
+            public IProgress<float> Progress { get; private set; }
             public TimeSpan ElapsedTime => TimeSpan.FromSeconds((IsDisposed ? DisposedAt : Time.realtimeSinceStartupAsDouble) - CreatedAt);
             public RequestTask(
                 string backendUrlOrAbsoluteUrl,
@@ -53,6 +54,7 @@ namespace EWova.Networking
                 object body,
                 string contentType,
                 bool throwApiExceptionFor4xxResponses,
+                IProgress<float> progress,
                 CancellationToken ct)
             {
                 BackendUrlOrAbsUrl = backendUrlOrAbsoluteUrl;
@@ -72,6 +74,7 @@ namespace EWova.Networking
                 BodyString = bodyString;
                 ContentType = contentType;
                 ThrowApiExceptionFor4xxResponses = throwApiExceptionFor4xxResponses;
+                Progress = progress;
 
                 CreatedAt = Time.realtimeSinceStartupAsDouble;
 
@@ -146,21 +149,22 @@ namespace EWova.Networking
             (
                 string backendUrlOrAbsoluteUrl,
                 bool isAbsoluteUrl = false,
-                string method = UnityWebRequest.kHttpVerbGET,
                 string acceptType = null,
                 object body = null,
                 string contentType = null,
                 bool throwApiExceptionFor4xxResponses = true,
+                IProgress<float> progress = null,
                 CancellationToken ct = default)
             {
                 return new RequestTask(
                     backendUrlOrAbsoluteUrl: backendUrlOrAbsoluteUrl,
                     isAbsoluteUrl: isAbsoluteUrl,
-                    method: method,
+                    method: UnityWebRequest.kHttpVerbGET,
                     acceptType: acceptType,
                     body: body,
                     contentType: contentType,
                     throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    progress: progress,
                     ct: ct);
             }
             public static RequestTask POST
@@ -171,6 +175,7 @@ namespace EWova.Networking
                 object body = null,
                 string contentType = null,
                 bool throwApiExceptionFor4xxResponses = true,
+                IProgress<float> progress = null,
                 CancellationToken ct = default)
             {
                 return new RequestTask(
@@ -181,6 +186,7 @@ namespace EWova.Networking
                     body: body,
                     contentType: contentType,
                     throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    progress: progress,
                     ct: ct);
             }
             public static RequestTask PUT
@@ -191,6 +197,7 @@ namespace EWova.Networking
                 object body = null,
                 string contentType = null,
                 bool throwApiExceptionFor4xxResponses = true,
+                IProgress<float> progress = null,
                 CancellationToken ct = default)
             {
                 return new RequestTask(
@@ -201,6 +208,7 @@ namespace EWova.Networking
                     body: body,
                     contentType: contentType,
                     throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    progress: progress,
                     ct: ct);
             }
             public static RequestTask DELETE
@@ -211,6 +219,7 @@ namespace EWova.Networking
                 object body = null,
                 string contentType = null,
                 bool throwApiExceptionFor4xxResponses = true,
+                IProgress<float> progress = null,
                 CancellationToken ct = default)
             {
                 return new RequestTask(
@@ -221,6 +230,7 @@ namespace EWova.Networking
                     body: body,
                     contentType: contentType,
                     throwApiExceptionFor4xxResponses: throwApiExceptionFor4xxResponses,
+                    progress: progress,
                     ct: ct);
             }
         }
@@ -351,7 +361,7 @@ namespace EWova.Networking
                 if (logger.InfoEnabled)
                     logger.Info($"{task.Method} {task.TaskId} Request {task.BackendUrlOrAbsUrl} {task.BodyString}");
 
-                await request.SendWebRequest().ToUniTask(cancellationToken: token);
+                await request.SendWebRequest().ToUniTask(task.Progress, cancellationToken: token);
 
                 return HandleResponse();
             }
