@@ -286,7 +286,7 @@ namespace EWova.Networking
         }
         #endregion
 
-        private static async UniTask<T> SendUnityWebRequest<T>(RequestTask task)
+        internal static async UniTask<T> SendUnityWebRequest<T>(RequestTask task)
         {
             var logger = task.Logger;
             var token = task.CancellationToken;
@@ -361,7 +361,18 @@ namespace EWova.Networking
                 if (logger.InfoEnabled)
                     logger.Info($"{task.Method} {task.TaskId} Request {task.BackendUrlOrAbsUrl} {task.BodyString}");
 
-                await request.SendWebRequest().ToUniTask(task.Progress, cancellationToken: token);
+                bool hasProgress = task.Progress != null;
+                float progressValue = 0f;
+                IProgress<float> progress = hasProgress ? Progress.Create<float>(p =>
+                {
+                    progressValue = p;
+                    task.Progress.Report(progressValue);
+                }) : null;
+
+                await request.SendWebRequest().ToUniTask(progress, cancellationToken: token);
+
+                if (hasProgress && progressValue != 1f)
+                    task.Progress.Report(1f);
 
                 return HandleResponse();
             }
@@ -396,6 +407,7 @@ namespace EWova.Networking
             {
                 if (logger.WarnEnabled)
                     logger.Warn($"{task.Method} {task.TaskId} Response {task.BackendUrlOrAbsUrl} Cancelled");
+
                 throw;
             }
             catch (Exception ex)

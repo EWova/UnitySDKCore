@@ -10,7 +10,7 @@ namespace EWova.Networking
 {
     public partial class AuthApiClient
     {
-        public async UniTask<Texture2D> GetTex2D(
+        public UniTask<Texture2D> GetTex2D(
             string url,
             bool isAbsoluteUrl = false,
             IProgress<float> progress = null,
@@ -19,7 +19,7 @@ namespace EWova.Networking
             var task = new RequestTask
             (
                 backendUrlOrAbsoluteUrl: url,
-                isAbsoluteUrl: true,
+                isAbsoluteUrl: isAbsoluteUrl,
                 method: UnityWebRequest.kHttpVerbGET,
                 acceptType: null,
                 body: null,
@@ -29,33 +29,46 @@ namespace EWova.Networking
                 ct: ct
             );
             task.HandleRequest(this);
-
-            var index = task.TaskId;
+            return SendUnityWebRequestTexture2D(task);
+        }
+        internal static async UniTask<Texture2D> SendUnityWebRequestTexture2D(RequestTask task)
+        {
             var logger = task.Logger;
             var token = task.CancellationToken;
 
-            using var request = new UnityWebRequest(task.Uri, UnityWebRequest.kHttpVerbGET);
-            request.timeout = DefaultRequestTimeoutSeconds;
-
-#if UNITY_6000_0_OR_NEWER
-            var downloadHandler = new DownloadHandlerTexture();
-            request.downloadHandler = downloadHandler;
-#else
-            request.downloadHandler = new DownloadHandlerBuffer();
-#endif
-
-            foreach (var kv in task.Headers)
-                request.SetRequestHeader(kv.Key, kv.Value);
-
-            if (_logger.InfoEnabled)
-            {
-
-                logger.Info($"GetTex2D {task.TaskId} Request {task.BackendUrlOrAbsUrl}");
-            }
-
+            UnityWebRequest request = null;
             try
             {
-                await request.SendWebRequest().ToUniTask(task.Progress, cancellationToken: token);
+                token.ThrowIfCancellationRequested();
+
+                request = new UnityWebRequest(task.Uri, task.Method);
+                request.timeout = DefaultRequestTimeoutSeconds;
+
+#if UNITY_6000_0_OR_NEWER
+                var downloadHandler = new DownloadHandlerTexture();
+                request.downloadHandler = downloadHandler;
+#else
+                request.downloadHandler = new DownloadHandlerBuffer();
+#endif
+
+                foreach (var kv in task.Headers)
+                    request.SetRequestHeader(kv.Key, kv.Value);
+
+                if (logger.InfoEnabled)
+                    logger.Info($"GetTex2D {task.TaskId} Request {task.BackendUrlOrAbsUrl}");
+
+                bool hasProgress = task.Progress != null;
+                float progressValue = 0f;
+                IProgress<float> progress = hasProgress ? Progress.Create<float>(p =>
+                {
+                    progressValue = p;
+                    task.Progress.Report(progressValue);
+                }) : null;
+
+                await request.SendWebRequest().ToUniTask(progress, cancellationToken: token);
+
+                if (hasProgress && progressValue != 1f)
+                        task.Progress.Report(1f);
 
                 Texture2D tex;
 
@@ -71,15 +84,14 @@ namespace EWova.Networking
                 tex.LoadImage(data, true);
 #endif
 
-                if (_logger.InfoEnabled)
-                {
-                    _logger.Info($"GetTex2D {task.TaskId} Response size={tex.width}x{tex.height},memory={tex.CalcUnityObjectNativeSize().RuntimeEstimateSize.ToHumanReadableSize()}");
-                }
+                if (logger.InfoEnabled)
+                    logger.Info($"GetTex2D {task.TaskId} Response size={tex.width}x{tex.height},memory={tex.CalcUnityObjectNativeSize().RuntimeEstimateSize.ToHumanReadableSize()}");
 
-                if (_logger.WarnEnabled && (tex.width > 2048 || tex.height > 2048))
-                {
-                    _logger.Warn("Response Texture size is too large, it may cause performance issues.");
-                }
+                if (logger.WarnEnabled && (tex.width > 2048 || tex.height > 2048))
+                    logger.Warn("Response Texture size is too large, it may cause performance issues.");
+
+                if (progressValue != 1f)
+                    task.Progress?.Report(1f);
 
                 return tex;
             }
@@ -109,22 +121,28 @@ namespace EWova.Networking
             }
             catch (OperationCanceledException)
             {
-                if (_logger.WarnEnabled)
-                    logger.Warn($"GetTex2D {task.TaskId} Response {task.BackendUrlOrAbsUrl} Canceled");
+                if (logger.WarnEnabled)
+                    logger.Warn($"GetTex2D {task.TaskId} Response {task.BackendUrlOrAbsUrl} Cancelled");
 
-                return null;
+                throw;
             }
             catch (Exception ex)
             {
-                if (_logger.ErrorEnabled)
-                    logger.Warn($"GetTex2D {task.TaskId} Response {task.BackendUrlOrAbsUrl} Failed");
+                if (logger.ErrorEnabled)
+                    logger.Err($"GetTex2D {task.TaskId} Response {task.BackendUrlOrAbsUrl} Unexpected {ex}");
 
-                Debug.LogException(ex);
-                return null;
+                throw new ApiException(
+                    errorCode: ApiErrorCode.Unknown,
+                    statusCode: 0,
+                    uri: task.Uri,
+                    responseText: null,
+                    message: "發送請求時發生非預期錯誤，若是 SDK 內部錯誤無法解決請聯絡我們。",
+                    inner: ex
+                );
             }
             finally
             {
-                request.Dispose();
+                request?.Dispose();
                 task.Dispose();
             }
         }
