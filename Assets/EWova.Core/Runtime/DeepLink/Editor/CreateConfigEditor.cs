@@ -1,5 +1,7 @@
 using UnityEngine;
+
 using UnityEditor;
+
 using System.IO;
 using System.Linq;
 
@@ -37,7 +39,7 @@ namespace EWova.DeepLink.Editor
         [MenuItem(MenuPath, true)]
         public static bool ValidateCreateConfig()
         {
-            return DeepLinkConfig.LoadOrDefault() == null;
+            return DeepLinkConfig.LoadOrDefault(createNew: false) == null;
         }
     }
 

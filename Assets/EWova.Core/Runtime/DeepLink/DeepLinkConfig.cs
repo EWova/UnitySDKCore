@@ -8,11 +8,11 @@ namespace EWova.DeepLink
     {
         public const string ResourceName = "DeeplinkConfig";
 
-        public static DeepLinkConfig LoadOrDefault()
+        public static DeepLinkConfig LoadOrDefault(bool createNew = true)
         {
             DeepLinkConfig config = Resources.Load<DeepLinkConfig>(ResourceName);
 
-            if (config == null)
+            if (config == null && createNew)
             {
 #if UNITY_EDITOR
                 config = EditorLoadOrCreateResource(out bool isNewlyCreated);
