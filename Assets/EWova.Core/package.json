@@ -2,5 +2,16 @@
   "name": "com.ewova.core",
   "version": "1.7.0",
   "displayName": "EWova.Core",
-  "description": "EWova.Core"
+  "description": "EWova SDK 核心，服務驗證、DeepLink 等功能",
+  "author": {
+    "name": "dcdrc"
+  },
+  "unity": "2021.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EWova/UnitySDKCore.git"
+  },
+  "documentationUrl": "https://github.com/EWova/UnitySDKCore",
+  "changelogUrl": "https://github.com/EWova/UnitySDKCore/tree/master/Assets/EWova.Core/CHANGELOG.md",
+  "license": "MIT"
 }
