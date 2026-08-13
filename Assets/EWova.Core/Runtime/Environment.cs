@@ -8,6 +8,7 @@ namespace EWova
 
     public static class Environment
     {
+        private const DeploymentMode k_DefaultDeploymentMode = DeploymentMode.Production;
         public static DeploymentMode DeploymentMode
         {
             get
@@ -15,10 +16,10 @@ namespace EWova
 #if UNITY_EDITOR
                 int mode = Authoring.EWovaEditorPrefs.GetInt(
                     "Env_EditorDeploymentMode",
-                    (int)DeploymentMode.Development);
+                    (int)k_DefaultDeploymentMode);
                 return (DeploymentMode)mode;
 #else
-                return DeploymentMode.Production;
+                return k_DefaultDeploymentMode;
 #endif
             }
         }
