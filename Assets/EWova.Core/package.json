@@ -4,7 +4,7 @@
   "displayName": "EWova.Core",
   "description": "EWova SDK 核心，服務驗證、DeepLink 等功能",
   "author": {
-    "name": "dcdrc"
+    "name": "EWova"
   },
   "unity": "2021.3",
   "repository": {
