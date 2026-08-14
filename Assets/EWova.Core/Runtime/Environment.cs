@@ -14,10 +14,7 @@ namespace EWova
             get
             {
 #if UNITY_EDITOR
-                int mode = Authoring.EWovaEditorPrefs.GetInt(
-                    "Env_EditorDeploymentMode",
-                    (int)k_DefaultDeploymentMode);
-                return (DeploymentMode)mode;
+                return Authoring.EWovaEditorPrefs.GetEnum("Env_EditorDeploymentMode", k_DefaultDeploymentMode);
 #else
                 return k_DefaultDeploymentMode;
 #endif

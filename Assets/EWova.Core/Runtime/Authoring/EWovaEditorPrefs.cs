@@ -66,15 +66,35 @@ namespace EWova.Authoring
             instance.Save(true);
         }
 
-        public static string GetString(string key, string defaultValue = null) => TryGetValue(key, defaultValue);
-        public static int GetInt(string key, int defaultValue = 0) => int.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
-        public static float GetFloat(string key, float defaultValue = 0f) => float.TryParse(TryGetValue(key, defaultValue), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
-        public static bool GetBool(string key, bool defaultValue = false) => bool.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
+        public static string GetString(string key, string defaultValue = null)
+            => TryGetValue(key, defaultValue);
+        public static int GetInt(string key, int defaultValue = 0)
+            => int.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
+        public static float GetFloat(string key, float defaultValue = 0f)
+            => float.TryParse(TryGetValue(key, defaultValue), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
+        public static bool GetBool(string key, bool defaultValue = false)
+            => bool.TryParse(TryGetValue(key, defaultValue), out var v) ? v : defaultValue;
 
-        public static void SetString(string key, string value) => SetValue(key, value);
-        public static void SetInt(string key, int value) => SetValue(key, value.ToString());
-        public static void SetFloat(string key, float value) => SetValue(key, value.ToString(CultureInfo.InvariantCulture));
-        public static void SetBool(string key, bool value) => SetValue(key, value.ToString());
+        public static void SetString(string key, string value)
+            => SetValue(key, value);
+        public static void SetInt(string key, int value)
+            => SetValue(key, value.ToString());
+        public static void SetFloat(string key, float value)
+            => SetValue(key, value.ToString(CultureInfo.InvariantCulture));
+        public static void SetBool(string key, bool value)
+            => SetValue(key, value.ToString());
+
+        // Extension methods for enum types
+        /// <summary>
+        /// 讀取 Enum 設定值（底層以 int 數值儲存與檢索）。
+        /// </summary>
+        public static TEnum GetEnum<TEnum>(string key, TEnum defaultValue = default) where TEnum : struct, Enum
+            => (TEnum)(object)GetInt(key, Convert.ToInt32(defaultValue));
+        /// <summary>
+        /// 寫入 Enum 設定值（底層轉為 int 數值儲存）。
+        /// </summary>
+        public static void SetEnum<TEnum>(string key, TEnum value) where TEnum : struct, Enum
+            => SetInt(key, Convert.ToInt32(value));
     }
 }
 #endif

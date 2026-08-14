@@ -39,7 +39,7 @@ namespace EWova.Authoring
         {
             if (Environment.DeploymentMode == mode) return;
 
-            EWovaEditorPrefs.SetInt(PrefKey, (int)mode);
+            EWovaEditorPrefs.SetEnum(PrefKey, mode);
 
             EditorLogger.Info($"編輯器部屬環境已切換到 {mode}");
         }
