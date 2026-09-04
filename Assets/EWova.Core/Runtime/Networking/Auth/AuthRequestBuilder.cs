@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+
 using System.Collections.Generic;
 using System;
 using System.Linq;
@@ -15,10 +16,11 @@ namespace EWova.Auth
             string codeChallenge,
             string state,
             string nonce,
+            AutoFill autoFill = default,
             string prompt = "login",
             string uiLocales = null)
         {
-            var query = BuildQueryString(new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>
             {
                 ["response_type"] = "code",
                 ["client_id"] = EscapeDataStringOrNull(config.ClientId),
@@ -30,7 +32,18 @@ namespace EWova.Auth
                 ["code_challenge_method"] = "S256",
                 ["ui_locales"] = EscapeDataStringOrNull(uiLocales),
                 ["prompt"] = EscapeDataStringOrNull(prompt)
-            });
+            };
+
+            if (autoFill.Method != null)
+                parameters["login_method"] = EscapeDataStringOrNull(autoFill.Method);
+            if (autoFill.Email != null)
+                parameters["login_hint"] = EscapeDataStringOrNull(autoFill.Email);
+            if (autoFill.QuickCode != null)
+                parameters["quick_login_org"] = EscapeDataStringOrNull(autoFill.QuickCode);
+            if (autoFill.QuickName != null)
+                parameters["quick_login_hint"] = EscapeDataStringOrNull(autoFill.QuickName);
+
+            var query = BuildQueryString(parameters);
 
             return $"{config.BaseAuthUrl}{config.AuthorizationEndpoint}?{query}";
         }

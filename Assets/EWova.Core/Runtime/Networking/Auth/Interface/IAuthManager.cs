@@ -73,5 +73,14 @@ namespace EWova.Auth
         /// 使用系統瀏覽器進行授權流程，將會透過 DeepLink 回傳授權結果。
         /// </summary>
         UniTask<AuthorizeResult> AuthorizeViaBrowserAsync(AuthorizeViaBrowserOptions? authorizeViaBrowserOptions = null, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 是否記住使用者的帳號資訊，並自動填入登入表單。
+        /// 設定為 <c>false</c> 時不會清除已記住的使用者資訊；如需清除，請呼叫 <see cref="ClearRememberedAutoFill"/>。
+        /// </summary>
+        bool RememberAutoFillOnAuthorizationSuccess { get; set; }
+        /// <summary>
+        /// 清除已記住的使用者帳號資訊。
+        /// </summary>
+        void ClearRememberedAutoFill();
     }
 }

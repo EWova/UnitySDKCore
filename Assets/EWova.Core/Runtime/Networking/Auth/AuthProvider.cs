@@ -1,10 +1,8 @@
 using Cysharp.Threading.Tasks;
 
 using EWova.DeepLink;
-using EWova.Networking;
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Security.Cryptography;
@@ -145,7 +143,20 @@ namespace EWova.Auth
                 {
                     try
                     {
-                        CurrentUser = new UserIdentity(value.Jwt.Value.Payload);
+                        var user = new UserIdentity(value.Jwt.Value.Payload);
+                        CurrentUser = user;
+                        if (RememberAutoFillOnAuthorizationSuccess)
+                        {
+                            var method = user.Payload.AuthenticationMethods != null && user.Payload.AuthenticationMethods.Length > 0
+                                ? user.Payload.AuthenticationMethods[0]
+                                : null;
+                            LocalStorage.SaveAutoFill(new AutoFill(
+                                method: method,
+                                email: user.Payload.Email,
+                                quickCode: user.Payload.QuickCode,
+                                quickName: user.Payload.OrgName
+                            ));
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -183,6 +194,17 @@ namespace EWova.Auth
             }
         }
         public bool IsSupportAuthorizeViaDeepLink { get; private set; } = false;
+        public bool RememberAutoFillOnAuthorizationSuccess
+        {
+            get
+            {
+                return LocalStorage.IsAutoFillActive();
+            }
+            set
+            {
+                LocalStorage.SetAutoFillActive(value);
+            }
+        }
 
         protected AuthProvider(
             EWovaAuthConfig authConfig,
@@ -258,7 +280,9 @@ namespace EWova.Auth
         }
         /// <exception cref="PlatformNotSupportedException">當前平台不支援任何註冊的 DeepLinkReceiver，無法進行授權流程。</exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public IAuthorizeProcess AuthorizeViaBrowser(AuthorizeViaBrowserOptions? options = null, Action<AuthorizeResult> onCompleted = null)
+        public IAuthorizeProcess AuthorizeViaBrowser(
+            AuthorizeViaBrowserOptions? options = null,
+            Action<AuthorizeResult> onCompleted = null)
         {
             if (!IsSupportAuthorizeViaDeepLink)
                 throw new PlatformNotSupportedException("當前平台不支援任何註冊的 DeepLinkReceiver，無法進行授權流程。");
@@ -294,11 +318,16 @@ namespace EWova.Auth
             if (effectiveOptions.UiLocales != null)
                 uiLocales = string.Join(" ", effectiveOptions.UiLocales);
 
+            AutoFill autoFill = RememberAutoFillOnAuthorizationSuccess
+                ? LocalStorage.LoadAutoFill()
+                : default;
+
             var authorizeUrl = AuthRequestBuilder.BuildAuthorizeUrl(
                 _authConfig,
                 _currentAuthorizeProcess.CodeChallenge,
                 _currentAuthorizeProcess.State,
                 _currentAuthorizeProcess.Nonce,
+                autoFill,
                 prompt,
                 uiLocales);
 
@@ -703,6 +732,11 @@ namespace EWova.Auth
             InternalHandleAuthenticationUrl(
                 handler.ActiveURL,
                 handler.ActiveInvocationType);
+        }
+
+        public void ClearRememberedAutoFill()
+        {
+            LocalStorage.ClearAutoFill();
         }
     }
 }
