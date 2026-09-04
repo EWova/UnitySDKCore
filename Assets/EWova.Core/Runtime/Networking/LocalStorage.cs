@@ -16,29 +16,29 @@ namespace EWova.Auth
         public static void SetAutoFillActive(bool enable)
         {
             if (enable)
-                PlayerPrefs.SetInt(AutoFillEnableKey, 1);
+                PrefsProvider.SetInt(AutoFillEnableKey, 1);
             else
-                PlayerPrefs.SetInt(AutoFillEnableKey, 0);
+                PrefsProvider.SetInt(AutoFillEnableKey, 0);
 
-            PlayerPrefs.Save();
+            PrefsProvider.Save();
         }
         /// <summary>
         /// 判斷 AutoFill 是否啟用
         /// </summary>
         public static bool IsAutoFillActive()
         {
-            if (!PlayerPrefs.HasKey(AutoFillEnableKey))
+            if (!PrefsProvider.HasKey(AutoFillEnableKey))
                 return false;
 
-            return PlayerPrefs.GetInt(AutoFillEnableKey, 0) == 1;
+            return PrefsProvider.GetInt(AutoFillEnableKey, 0) == 1;
         }
         /// <summary>
         /// 清除 AutoFill 啟用狀態
         /// </summary>
         public static void ClearAutoFillActive()
         {
-            PlayerPrefs.DeleteKey(AutoFillEnableKey);
-            PlayerPrefs.Save();
+            PrefsProvider.DeleteKey(AutoFillEnableKey);
+            PrefsProvider.Save();
         }
 
         /// <summary>
@@ -48,14 +48,14 @@ namespace EWova.Auth
         public static void SaveAutoFill(AutoFill autoFill)
         {
             if (autoFill.Method != null)
-                PlayerPrefs.SetString(AutoFillMethodKey, autoFill.Method);
+                PrefsProvider.SetString(AutoFillMethodKey, autoFill.Method);
             if (autoFill.Email != null)
-                PlayerPrefs.SetString(AutoFillEmailKey, autoFill.Email);
+                PrefsProvider.SetString(AutoFillEmailKey, autoFill.Email);
             if (autoFill.QuickOrg != null)
-                PlayerPrefs.SetString(AutoFillQuickOrgKey, autoFill.QuickOrg);
+                PrefsProvider.SetString(AutoFillQuickOrgKey, autoFill.QuickOrg);
             if (autoFill.QuickCode != null)
-                PlayerPrefs.SetString(AutoFillQuickCodeKey, autoFill.QuickCode);
-            PlayerPrefs.Save();
+                PrefsProvider.SetString(AutoFillQuickCodeKey, autoFill.QuickCode);
+            PrefsProvider.Save();
         }
         /// <summary>
         /// 從 PlayerPrefs 讀取 AutoFill 資料，如果沒有對應的值，則會回傳 null
@@ -63,13 +63,13 @@ namespace EWova.Auth
         public static AutoFill LoadAutoFill()
         {
             var method
-                = PlayerPrefs.GetString(AutoFillMethodKey, null);
+                = PrefsProvider.GetString(AutoFillMethodKey, null);
             var email
-                = PlayerPrefs.GetString(AutoFillEmailKey, null);
+                = PrefsProvider.GetString(AutoFillEmailKey, null);
             var quickOrg
-                = PlayerPrefs.GetString(AutoFillQuickOrgKey, null);
+                = PrefsProvider.GetString(AutoFillQuickOrgKey, null);
             var quickCode
-                = PlayerPrefs.GetString(AutoFillQuickCodeKey, null);
+                = PrefsProvider.GetString(AutoFillQuickCodeKey, null);
             return new AutoFill(method, email, quickOrg, quickCode);
         }
         /// <summary>
@@ -77,11 +77,11 @@ namespace EWova.Auth
         /// </summary>
         public static void ClearAutoFill()
         {
-            PlayerPrefs.DeleteKey(AutoFillMethodKey);
-            PlayerPrefs.DeleteKey(AutoFillEmailKey);
-            PlayerPrefs.DeleteKey(AutoFillQuickOrgKey);
-            PlayerPrefs.DeleteKey(AutoFillQuickCodeKey);
-            PlayerPrefs.Save();
+            PrefsProvider.DeleteKey(AutoFillMethodKey);
+            PrefsProvider.DeleteKey(AutoFillEmailKey);
+            PrefsProvider.DeleteKey(AutoFillQuickOrgKey);
+            PrefsProvider.DeleteKey(AutoFillQuickCodeKey);
+            PrefsProvider.Save();
         }
     }
 }
