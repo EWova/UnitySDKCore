@@ -54,7 +54,10 @@ namespace EWova.Auth
             if (payload.Issuer != m_config.Issuer)
                 throw new TokenEndpointException(400, "invalid_issuer", "Issuer mismatch");
 
-            var expiry = DateTimeOffset.FromUnixTimeSeconds(payload.Expiry).UtcDateTime;
+            if (payload.Expiry == null)
+                throw new TokenEndpointException(400, "invalid_expiry", "Expiry claim is missing");
+
+            var expiry = DateTimeOffset.FromUnixTimeSeconds(payload.Expiry.Value).UtcDateTime;
             if (DateTime.UtcNow >= expiry)
                 throw new TokenEndpointException(400, "id_token_expired", "Token expired");
 

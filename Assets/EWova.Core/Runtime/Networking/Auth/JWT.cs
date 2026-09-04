@@ -38,20 +38,20 @@ public readonly struct JwtPayload
     [Preserve][JsonProperty("nickname")] public readonly string Nickname;
     [Preserve][JsonProperty("birthDate")] public readonly DateTimeOffset? BirthDate;
     [Preserve][JsonProperty("email")] public readonly string Email;
-    [Preserve][JsonProperty("email_verified")] public readonly bool EmailVerified;
+    [Preserve][JsonProperty("email_verified")] public readonly bool? EmailVerified;
     [Preserve][JsonProperty("org_id")] public readonly string OrgId;
     [Preserve][JsonProperty("org_name")] public readonly string OrgName;
     [Preserve][JsonProperty("roles")] public readonly string[] Roles;
 
-    [Preserve][JsonProperty("updated_at")] public readonly long UpdatedAt;
-    [Preserve][JsonProperty("auth_time")] public readonly long AuthTime;
+    [Preserve][JsonProperty("updated_at")] public readonly long? UpdatedAt;
+    [Preserve][JsonProperty("auth_time")] public readonly long? AuthTime;
 
     [Preserve][JsonProperty("nonce")] public readonly string Nonce;
     [Preserve][JsonProperty("at_hash")] public readonly string AccessTokenHash;
 
     [Preserve][JsonProperty("aud")] public readonly string Audience;
-    [Preserve][JsonProperty("exp")] public readonly long Expiry;
-    [Preserve][JsonProperty("iat")] public readonly long IssuedAt;
+    [Preserve][JsonProperty("exp")] public readonly long? Expiry;
+    [Preserve][JsonProperty("iat")] public readonly long? IssuedAt;
     [Preserve][JsonProperty("iss")] public readonly string Issuer;
 }
 
