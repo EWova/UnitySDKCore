@@ -153,8 +153,8 @@ namespace EWova.Auth
                             LocalStorage.SaveAutoFill(new AutoFill(
                                 method: method,
                                 email: user.Payload.Email,
-                                quickCode: user.Payload.QuickCode,
-                                quickName: user.Payload.OrgName
+                                quickOrg: user.Payload.QuickOrg,
+                                quickCode: user.Payload.QuickCode
                             ));
                         }
                     }

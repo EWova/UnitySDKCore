@@ -38,10 +38,10 @@ namespace EWova.Auth
                 parameters["login_method"] = EscapeDataStringOrNull(autoFill.Method);
             if (autoFill.Email != null)
                 parameters["login_hint"] = EscapeDataStringOrNull(autoFill.Email);
+            if (autoFill.QuickOrg != null)
+                parameters["quick_login_org"] = EscapeDataStringOrNull(autoFill.QuickOrg);
             if (autoFill.QuickCode != null)
-                parameters["quick_login_org"] = EscapeDataStringOrNull(autoFill.QuickCode);
-            if (autoFill.QuickName != null)
-                parameters["quick_login_hint"] = EscapeDataStringOrNull(autoFill.QuickName);
+                parameters["quick_login_hint"] = EscapeDataStringOrNull(autoFill.QuickCode);
 
             var query = BuildQueryString(parameters);
 

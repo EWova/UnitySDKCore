@@ -4,19 +4,19 @@ namespace EWova.Auth
     {
         public readonly string Method;
         public readonly string Email;
+        public readonly string QuickOrg;
         public readonly string QuickCode;
-        public readonly string QuickName;
 
         public AutoFill(
             string method,
             string email,
-            string quickCode,
-            string quickName)
+            string quickOrg,
+            string quickCode)
         {
             Method = method;
             Email = email;
+            QuickOrg = quickOrg;
             QuickCode = quickCode;
-            QuickName = quickName;
         }
     }
 }

@@ -7,8 +7,8 @@ namespace EWova.Auth
         public const string AutoFillEnableKey = "ewova_autofill_enable";
         public const string AutoFillMethodKey = "ewova_autofill_method";
         public const string AutoFillEmailKey = "ewova_autofill_email";
-        public const string AutoFillOrganizationCodeKey = "ewova_autofill_organizationCode";
-        public const string AutoFillQuickNameKey = "ewova_autofill_quickName";
+        public const string AutoFillQuickOrgKey = "ewova_autofill_quickOrg";
+        public const string AutoFillQuickCodeKey = "ewova_autofill_quickCode";
 
         /// <summary>
         /// 設定 AutoFill 是否啟用
@@ -51,10 +51,10 @@ namespace EWova.Auth
                 PlayerPrefs.SetString(AutoFillMethodKey, autoFill.Method);
             if (autoFill.Email != null)
                 PlayerPrefs.SetString(AutoFillEmailKey, autoFill.Email);
+            if (autoFill.QuickOrg != null)
+                PlayerPrefs.SetString(AutoFillQuickOrgKey, autoFill.QuickOrg);
             if (autoFill.QuickCode != null)
-                PlayerPrefs.SetString(AutoFillOrganizationCodeKey, autoFill.QuickCode);
-            if (autoFill.QuickName != null)
-                PlayerPrefs.SetString(AutoFillQuickNameKey, autoFill.QuickName);
+                PlayerPrefs.SetString(AutoFillQuickCodeKey, autoFill.QuickCode);
             PlayerPrefs.Save();
         }
         /// <summary>
@@ -66,11 +66,11 @@ namespace EWova.Auth
                 = PlayerPrefs.GetString(AutoFillMethodKey, null);
             var email
                 = PlayerPrefs.GetString(AutoFillEmailKey, null);
-            var organizationCode
-                = PlayerPrefs.GetString(AutoFillOrganizationCodeKey, null);
-            var quickName
-                = PlayerPrefs.GetString(AutoFillQuickNameKey, null);
-            return new AutoFill(method, email, organizationCode, quickName);
+            var quickOrg
+                = PlayerPrefs.GetString(AutoFillQuickOrgKey, null);
+            var quickCode
+                = PlayerPrefs.GetString(AutoFillQuickCodeKey, null);
+            return new AutoFill(method, email, quickOrg, quickCode);
         }
         /// <summary>
         /// 清除 AutoFill 資料
@@ -79,8 +79,8 @@ namespace EWova.Auth
         {
             PlayerPrefs.DeleteKey(AutoFillMethodKey);
             PlayerPrefs.DeleteKey(AutoFillEmailKey);
-            PlayerPrefs.DeleteKey(AutoFillOrganizationCodeKey);
-            PlayerPrefs.DeleteKey(AutoFillQuickNameKey);
+            PlayerPrefs.DeleteKey(AutoFillQuickOrgKey);
+            PlayerPrefs.DeleteKey(AutoFillQuickCodeKey);
             PlayerPrefs.Save();
         }
     }
