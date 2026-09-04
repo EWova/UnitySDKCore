@@ -3,6 +3,6 @@ namespace EWova
 {
     internal static class PackageInfo
     {
-        public const string Version = "1.7.0";
+        public const string Version = "1.8.0";
     }
 }

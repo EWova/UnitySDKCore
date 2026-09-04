@@ -44,7 +44,7 @@ namespace EWova.Auth
                 ct: cancellationToken));
 
             var tokenSet = TokenSet.FromResponse(response);
-            var payload = tokenSet.Jwt.Payload;
+            var payload = tokenSet.Jwt.Value.Payload;
 
             if (payload.Nonce != nonce)
                 throw new TokenEndpointException(400, "invalid_nonce", "Nonce mismatch");

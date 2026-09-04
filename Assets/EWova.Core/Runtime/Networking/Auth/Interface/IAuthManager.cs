@@ -50,7 +50,7 @@ namespace EWova.Auth
         /// <summary>
         /// 目前已驗證的使用者資訊，若尚未驗證或無法解析使用者資訊則為 null。
         /// </summary>
-        UserProfile CurrentUser { get; }
+        UserIdentity? CurrentUser { get; }
         /// <summary>
         /// 嘗試取得有效的 access_token，若目前的 access_token 已過期但 refresh_token 可用，將會自動嘗試刷新。
         /// </summary>

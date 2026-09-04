@@ -1,6 +1,6 @@
 {
   "name": "com.ewova.core",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "displayName": "EWova.Core",
   "description": "EWova SDK 核心，服務驗證、DeepLink 等功能",
   "author": {

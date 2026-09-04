@@ -32,7 +32,7 @@ namespace EWova.Core.Tests
                 {
                     if (result.Status == AuthorizeProcessResult.Success)
                     {
-                        Debug.Log($"Login 處理完成. 驗證者身分 {auth.CurrentUser?.Name}.");
+                        Debug.Log($"Login 處理完成. 驗證者身分 {auth.CurrentUser?.Payload.Name}.");
                     }
                     else if (result.Status == AuthorizeProcessResult.Cancelled)
                     {
@@ -75,7 +75,7 @@ namespace EWova.Core.Tests
                 {
                     if (result.Status == AuthorizeProcessResult.Success)
                     {
-                        Debug.Log($"Login 處理完成. 驗證者身分 {auth.CurrentUser?.Name}.");
+                        Debug.Log($"Login 處理完成. 驗證者身分 {auth.CurrentUser?.Payload.Name}.");
                     }
                     else if (result.Status == AuthorizeProcessResult.Cancelled)
                     {

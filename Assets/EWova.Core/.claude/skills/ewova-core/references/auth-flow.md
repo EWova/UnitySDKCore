@@ -101,7 +101,7 @@ callers who need to know success/failure must watch the logs or modify the metho
 |---|---|
 | `AuthApiClient(IAuthManager authManager, string baseUrl, Logger logger = null)` | Constructor; a trailing `/` on `baseUrl` is stripped automatically |
 | `static int DefaultRequestTimeoutSeconds` | Global timeout in seconds (default 30), `static`, affects all client instances |
-| `bool IsUserAuthenticated` / `AuthState AuthState` / `UserProfile AuthenticatedUserProfile` | Forwarded from the bound `IAuthManager` |
+| `bool IsUserAuthenticated` / `AuthState AuthState` / `UserIdentity? AuthenticatedUserProfile` | Forwarded from the bound `IAuthManager` |
 | `bool TryGetValidAccessToken(out string token)` | Forwards `IAuthManager.TryGetValidAccessToken` |
 | `protected UniTask<T> Send<T>(RequestTask task, Action<RequestTask> postProcRequestTask = null)` | Main entry point for sending a request; `postProcRequestTask` can modify headers before sending (e.g. manually overriding Authorization) |
 | `UniTask<Texture2D> GetTex2D(string url, bool isAbsoluteUrl, CancellationToken ct)` | Dedicated image download; returns `null` and logs on failure instead of throwing |

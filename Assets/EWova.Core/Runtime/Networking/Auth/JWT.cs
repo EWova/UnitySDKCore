@@ -1,65 +1,58 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 using UnityEngine.Scripting;
 
-
-[Serializable]
 [Preserve]
-public sealed class JwtObject
+public readonly struct JwtObject
 {
-    public JwtHeader Header { get; set; }
-    public JwtPayload Payload { get; set; }
+    public readonly JwtHeader Header;
+    public readonly JwtPayload Payload;
+
+    public JwtObject(JwtHeader header, JwtPayload payload)
+    {
+        Header = header;
+        Payload = payload;
+    }
 }
 
-[Serializable]
 [Preserve]
-public sealed class JwtHeader
+public readonly struct JwtHeader
 {
-    [Preserve]
-    [JsonProperty("alg")]
-    public string Algorithm { get; set; }
-
-    [Preserve]
-    [JsonProperty("typ")]
-    public string Type { get; set; }
-
-    [Preserve]
-    [JsonProperty("kid")]
-    public string KeyId { get; set; }
+    [Preserve][JsonProperty("alg")] public readonly string Algorithm;
+    [Preserve][JsonProperty("typ")] public readonly string Type;
+    [Preserve][JsonProperty("kid")] public readonly string KeyId;
 }
 
-[Serializable]
 [Preserve]
-public sealed class JwtPayload
+public readonly struct JwtPayload
 {
-    [Preserve]
-    [JsonProperty("nonce")]
-    public string Nonce { get; set; }
+    [Preserve][JsonProperty("sub")] public readonly string Subject;
+    [Preserve][JsonProperty("amr")] public readonly string[] AuthenticationMethods;
+    [Preserve][JsonProperty("quick_code")] public readonly string QuickCode;
+    [Preserve][JsonProperty("quick_org")] public readonly string QuickOrg;
 
-    [Preserve]
-    [JsonProperty("iss")]
-    public string Issuer { get; set; }
+    [Preserve][JsonProperty("name")] public readonly string Name;
+    [Preserve][JsonProperty("nickname")] public readonly string Nickname;
+    [Preserve][JsonProperty("birthDate")] public readonly DateTimeOffset? BirthDate;
+    [Preserve][JsonProperty("email")] public readonly string Email;
+    [Preserve][JsonProperty("email_verified")] public readonly bool EmailVerified;
+    [Preserve][JsonProperty("org_id")] public readonly string OrgId;
+    [Preserve][JsonProperty("org_name")] public readonly string OrgName;
+    [Preserve][JsonProperty("roles")] public readonly string[] Roles;
 
-    [Preserve]
-    [JsonProperty("aud")]
-    public string Audience { get; set; }
+    [Preserve][JsonProperty("updated_at")] public readonly long UpdatedAt;
+    [Preserve][JsonProperty("auth_time")] public readonly long AuthTime;
 
-    [Preserve]
-    [JsonProperty("exp")]
-    public long Expiry { get; set; }
+    [Preserve][JsonProperty("nonce")] public readonly string Nonce;
+    [Preserve][JsonProperty("at_hash")] public readonly string AccessTokenHash;
 
-    [Preserve]
-    [JsonProperty("sub")]
-    public string Subject { get; set; }
-
-    [Preserve]
-    [JsonExtensionData]
-    public Dictionary<string, JToken> AdditionalClaims { get; set; }
+    [Preserve][JsonProperty("aud")] public readonly string Audience;
+    [Preserve][JsonProperty("exp")] public readonly long Expiry;
+    [Preserve][JsonProperty("iat")] public readonly long IssuedAt;
+    [Preserve][JsonProperty("iss")] public readonly string Issuer;
 }
 
 public class JwtException : Exception
@@ -69,6 +62,8 @@ public class JwtException : Exception
 
 public static class JWT
 {
+    private readonly static JsonSerializerSettings JsonSerializerSettings = new() { MissingMemberHandling = MissingMemberHandling.Ignore };
+
     [Preserve]
     public static JwtObject Read(string jwt)
     {
@@ -80,37 +75,44 @@ public static class JWT
         if (parts.Length != 3)
             throw new JwtException("JWT must contain exactly 3 parts.");
 
+        string headerJson;
+        string payloadJson;
         try
         {
-            string headerJson = Base64UrlDecode(parts[0]);
-            string payloadJson = Base64UrlDecode(parts[1]);
-
-            JwtHeader header =
-                JsonConvert.DeserializeObject<JwtHeader>(headerJson);
-
-            JwtPayload payload =
-                JsonConvert.DeserializeObject<JwtPayload>(payloadJson);
-
-            if (header == null)
-                throw new JwtException("Failed to deserialize JWT header.");
-
-            if (payload == null)
-                throw new JwtException("Failed to deserialize JWT payload.");
-
-            return new JwtObject
-            {
-                Header = header,
-                Payload = payload
-            };
+            headerJson = Base64UrlDecode(parts[0]);
+            payloadJson = Base64UrlDecode(parts[1]);
         }
-        catch (FormatException ex)
+        catch (Exception ex)
         {
-            throw new JwtException($"Invalid Base64Url format: {ex.Message}");
+            throw new JwtException($"Unexpected error during JWT decoding: {ex.Message}");
         }
-        catch (JsonException ex)
+
+
+        JwtHeader header;
+        try
         {
-            throw new JwtException($"Invalid JWT JSON: {ex.Message}");
+            header = JsonConvert.DeserializeObject<JwtHeader>(headerJson, JsonSerializerSettings);
         }
+        catch (Exception ex)
+        {
+            throw new JwtException($"Unexpected error during JWT header deserialization: {ex.Message}");
+        }
+
+        JwtPayload payload;
+        try
+        {
+            payload = JsonConvert.DeserializeObject<JwtPayload>(payloadJson, JsonSerializerSettings);
+        }
+        catch (Exception ex)
+        {
+            throw new JwtException($"Unexpected error during JWT payload deserialization: {ex.Message}");
+        }
+
+        return new JwtObject
+        (
+            header,
+            payload
+        );
     }
 
     private static string Base64UrlDecode(string input)

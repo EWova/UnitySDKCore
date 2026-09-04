@@ -40,7 +40,7 @@ namespace EWova.Networking
         public IAuthManager AuthManager => _auth;
         public bool IsUserAuthenticated => _auth != null && _auth.IsAuthenticated;
         public AuthState AuthState => _auth != null ? _auth.CurrentAuthState : AuthState.Unauthenticated;
-        public UserProfile AuthenticatedUserProfile => _auth != null ? _auth.CurrentUser : null;
+        public UserIdentity? AuthenticatedUserProfile => _auth?.CurrentUser;
 
         public bool TryGetValidAccessToken(out string token)
         {

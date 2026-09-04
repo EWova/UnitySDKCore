@@ -104,7 +104,7 @@ namespace EWova.Auth
         /// </summary>
         public virtual string AppId { get; }
         public AuthState CurrentAuthState { get; internal set; }
-        public UserProfile CurrentUser { get; internal set; }
+        public UserIdentity? CurrentUser { get; internal set; }
         public event Action<AuthState> OnAuthStateChanged;
 
         public bool UseNativeDeepLinkReceiver { get; set; } = false;
@@ -145,7 +145,7 @@ namespace EWova.Auth
                 {
                     try
                     {
-                        CurrentUser = UserProfile.FromJwt(value.Jwt, DateTimeOffset.UtcNow);
+                        CurrentUser = new UserIdentity(value.Jwt.Value.Payload);
                     }
                     catch (Exception ex)
                     {
@@ -160,7 +160,7 @@ namespace EWova.Auth
                 {
                     var userInfo = CurrentUser == null
                         ? "user=null"
-                        : $"userId={CurrentUser.Id}, userName={CurrentUser.Name}";
+                        : $"sub={CurrentUser.Value.Payload.Subject}, name={CurrentUser.Value.Payload.Name}";
 
                     string refreshInfo;
 

@@ -79,7 +79,7 @@ from your own project's `MyAppScheme`.
 |---|---|---|
 | `EWova` | `EWova.Core` | `EWovaApp`, `Environment`, `Logger`, `UnityMainThreadDispatcher` |
 | `EWova.DeepLink` | `EWova.Core` | `DeepLinkHandler`, `DeepLinkConfig`, `IDeepLinkProvider` |
-| `EWova.Auth` | `EWova.Networking` | `EWovaAuth`, `AuthProvider`, `IAuthManager`, `TokenService`, `UserProfile` |
+| `EWova.Auth` | `EWova.Networking` | `EWovaAuth`, `AuthProvider`, `IAuthManager`, `TokenService`, `UserIdentity` |
 | `EWova.Networking` | `EWova.Networking` | `AuthApiClient`, `ApiException`, `PlayerLoopHelper` |
 | `EWova.XR` | `EWova.XR` | `XRInputFieldFixer` |
 
@@ -108,7 +108,7 @@ if (auth.CurrentAuthState != AuthState.Authenticated)
             switch (result.Status)
             {
                 case AuthorizeProcessResult.Success:
-                    Debug.Log($"Login succeeded: {auth.CurrentUser?.Name}");
+                    Debug.Log($"Login succeeded: {auth.CurrentUser?.Payload.Name}");
                     break;
                 case AuthorizeProcessResult.Cancelled:
                     Debug.Log("User cancelled login");
@@ -184,9 +184,10 @@ string accessToken = await auth.GetAccessTokenAsync(cancellationToken);
 - While logged in, `AuthProvider` checks every 15 seconds internally and auto-renews in the
   background once less than 60 seconds remain (`StartTokenRenewLoop`) — callers usually don't need
   to schedule their own refresh.
-- `auth.CurrentUser` (type `UserProfile`) is parsed from the `id_token`'s JWT claims (`Id`, `Name`,
-  `Email`, `OrgId`, `Roles`, etc.). Note some auth servers don't return a new `id_token` on refresh,
-  in which case `CurrentUser` keeps its old value instead of being cleared — this is expected.
+- `auth.CurrentUser` (type `UserIdentity?`) wraps the raw `JwtPayload` parsed from the `id_token`'s
+  JWT claims (`CurrentUser.Value.Payload.Subject`, `.Name`, `.Email`, `.OrgId`, `.Roles`, etc.). Note
+  some auth servers don't return a new `id_token` on refresh, in which case `CurrentUser` keeps its
+  old value instead of being cleared — this is expected.
 
 ## Calling a protected API
 
