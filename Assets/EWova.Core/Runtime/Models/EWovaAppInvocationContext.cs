@@ -18,6 +18,6 @@ namespace EWova
         /// <summary>
         /// 如果有值，代表是從該課程世界的空間來的
         /// </summary>
-        public int? SpaceInstanceIndex;
+        public Guid? SpaceGuid;
     }
 }

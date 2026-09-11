@@ -5,7 +5,6 @@ using EWova.DeepLink;
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 
 using UnityEngine;
@@ -126,10 +125,10 @@ namespace EWova
                     worldGuid.ToString();
 
                 if (backToWorldAndSpace &&
-                    InvocationContext.SpaceInstanceIndex is int spaceId)
+                    InvocationContext.SpaceGuid is Guid spaceGuid)
                 {
                     queryDict[EWovaAppInvocationContext.SpaceIdKey] =
-                        spaceId.ToString();
+                        spaceGuid.ToString();
                 }
             }
 
@@ -163,14 +162,14 @@ namespace EWova
                 {
                     context.WorldGuid = worldGuid;
                 }
-                if (sid != null && int.TryParse(sid, out var spaceInstanceIndex))
+                if (sid != null && Guid.TryParse(sid, out var spaceGuid))
                 {
-                    context.SpaceInstanceIndex = spaceInstanceIndex;
+                    context.SpaceGuid = spaceGuid;
                 }
 
                 Logger.Default.Info(
                     "透過 EWova 啟動 DeepLink 過來的，InvocationContext: " +
-                    $"WorldGuid={context.WorldGuid}, SpaceInstanceIndex={context.SpaceInstanceIndex}"
+                    $"WorldGuid={context.WorldGuid}, SpaceGuid={context.SpaceGuid}"
                 );
                 InvocationContext = context;
                 return;

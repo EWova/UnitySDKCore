@@ -151,6 +151,30 @@ namespace EWova.Core.Tests
             }
         }
 
+        public string appid = "";
+        [ContextMenu("Try launch ewova by CreateLaunchTicket2")]
+        public void TryCreateLaunchTicket2()
+        {
+            // get auth _tokenService
+            var _tokenService = EWovaAuth.Instance
+                .GetType()
+                .GetField("_tokenService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .GetValue(EWovaAuth.Instance) as TokenService;
+            if (_tokenService != null)
+            {
+                _tokenService.CreateLaunchTicketByForwardAsync(AccToken, appid)
+                    .ContinueWith(task =>
+                    {
+                        Debug.Log($"CreateLaunchTicketAsync result: {task.launchTicket}");
+                    }).Forget();
+            }
+            else
+            {
+                Debug.LogError("Failed to get _tokenService from auth.");
+            }
+        }
+
+
         [ContextMenu("DEEPLINK")]
         public void Deeplink()
         {
