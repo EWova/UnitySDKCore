@@ -97,10 +97,6 @@ namespace EWova.Auth
         }
 
         public bool IsAuthenticated => CurrentAuthState == AuthState.Authenticated || CurrentAuthState == AuthState.RefreshingToken;
-        /// <summary>
-        /// 目前使用的應用程式 ID，通常用於向後端換發 launch_ticket 或其他授權用途。
-        /// </summary>
-        public virtual string AppId { get; }
         public AuthState CurrentAuthState { get; internal set; }
         public UserIdentity? CurrentUser { get; internal set; }
         public event Action<AuthState> OnAuthStateChanged;
@@ -369,12 +365,13 @@ namespace EWova.Auth
             }
         }
         /// <summary>
-        /// 在已驗證狀態下，向後端換發一張 <c>launch_ticket</c>，可用來讓 EWova App 兌換並延續目前的登入狀態。
-        /// 呼叫前會先確保 access token 為最新狀態。
+        /// 在已驗證狀態下，向後端換發一張 <c>launch_ticket</c>
         /// </summary>
-        /// <param name="requestAppId">要求換票的來源應用程式 id。</param>
+        /// <param name="requestAppId">要求換票的目標應用程式 id。</param>
         /// <exception cref="InvalidOperationException">尚未處於已驗證狀態時拋出。</exception>
-        public async UniTask<string> CreateLaunchTicketAsync(string requestAppId, CancellationToken ct = default)
+        public async UniTask<LaunchTicketResponse> CreateLaunchTicketByForwardAsync(
+            string requestAppId,
+            CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(requestAppId))
                 throw new ArgumentNullException(nameof(requestAppId));
@@ -384,7 +381,24 @@ namespace EWova.Auth
 
             await RefreshAccessTokenAsync(ct);
 
-            var rsp = await _tokenService.CreateLaunchTicketAsync(CurrentTokens.AccessToken, requestAppId, ct);
+            return await _tokenService.CreateLaunchTicketByForwardAsync(CurrentTokens.AccessToken, requestAppId, ct);
+        }
+
+        /// <summary>
+        /// 在已驗證狀態下，向後端換發一張 <c>launch_ticket</c>
+        /// 呼叫前會先確保 access token 為最新狀態。
+        /// </summary>
+        /// <param name="requestAppId">要求換票的來源應用程式 id。</param>
+        /// <exception cref="InvalidOperationException">尚未處於已驗證狀態時拋出。</exception>
+        public async UniTask<string> CreateLaunchTicketByReverseAsync(
+            CancellationToken ct = default)
+        {
+            if (CurrentAuthState != AuthState.Authenticated && CurrentAuthState != AuthState.RefreshingToken)
+                throw new InvalidOperationException("未處於認證狀態，無法建立 launch ticket。");
+
+            await RefreshAccessTokenAsync(ct);
+
+            var rsp = await _tokenService.CreateLaunchTicketByReverseAsync(CurrentTokens.AccessToken, ct);
             return rsp.launchTicket;
         }
 

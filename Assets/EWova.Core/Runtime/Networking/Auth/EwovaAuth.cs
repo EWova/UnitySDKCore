@@ -17,7 +17,6 @@ namespace EWova.Auth
             }
         }
         private static EWovaAuth _instance;
-        public override string AppId => null;
 
         internal EWovaAuth()
             : base(EWovaAuthConfigFactory.Create(options =>

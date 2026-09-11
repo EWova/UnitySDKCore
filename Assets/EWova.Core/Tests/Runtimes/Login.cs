@@ -128,7 +128,6 @@ namespace EWova.Core.Tests
             Debug.Log("User logged out.");
         }
 
-        public string AppId = "019d417e-29e6-7832-9ca8-7c3469d77991";
         public string AccToken = "";
         [ContextMenu("Try launch ewova by CreateLaunchTicket")]
         public void TryCreateLaunchTicket()
@@ -140,10 +139,11 @@ namespace EWova.Core.Tests
                 .GetValue(EWovaAuth.Instance) as TokenService;
             if (_tokenService != null)
             {
-                _tokenService.CreateLaunchTicketAsync(AccToken, AppId).ContinueWith(task =>
-                {
-                    Debug.Log($"CreateLaunchTicketAsync result: {task.launchTicket}");
-                });
+                _tokenService.CreateLaunchTicketByReverseAsync(AccToken)
+                    .ContinueWith(task =>
+                    {
+                        Debug.Log($"CreateLaunchTicketAsync result: {task.launchTicket}");
+                    }).Forget();
             }
             else
             {

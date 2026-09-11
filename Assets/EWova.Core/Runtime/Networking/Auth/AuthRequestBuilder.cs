@@ -1,5 +1,3 @@
-using Newtonsoft.Json;
-
 using System.Collections.Generic;
 using System;
 using System.Linq;
@@ -84,11 +82,6 @@ namespace EWova.Auth
                 ["refresh_token"] = refreshToken,
                 ["scope"] = EscapeDataStringOrNull(config.Scopes),
             });
-        }
-        public static string BuildCreateLaunchTicketJsonBody(
-            string appId)
-        {
-            return JsonConvert.SerializeObject(new { appId });
         }
 
         private static string EscapeDataStringOrNull(string value)

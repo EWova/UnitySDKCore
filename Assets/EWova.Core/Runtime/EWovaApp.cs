@@ -74,19 +74,16 @@ namespace EWova
             if (wannaLogin)
             {
                 authProvider ??= EWovaAuth.Instance;
-                if (!string.IsNullOrEmpty(authProvider.AppId))
+                try
                 {
-                    try
-                    {
-                        string launchTicket = await authProvider.CreateLaunchTicketAsync(authProvider.AppId, ct);
-                        if (!string.IsNullOrEmpty(launchTicket))
-                            queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogException(ex);
-                        Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。");
-                    }
+                    string launchTicket = await authProvider.CreateLaunchTicketByReverseAsync(ct);
+                    if (!string.IsNullOrEmpty(launchTicket))
+                        queryDict[AuthProvider.LaunchTicketQueryKey] = launchTicket;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                    Logger.Default.Warn($"發生錯誤，跳轉到 EWova 將不會自動登入。");
                 }
             }
 
@@ -144,11 +141,13 @@ namespace EWova
             AuthProvider authProvider = null,
             IReadOnlyDictionary<string, string> extraQuery = null)
         {
-            GetDeepLink(option, authProvider, extraQuery).ContinueWith(url =>
-            {
-                if (!string.IsNullOrEmpty(url))
-                    Application.OpenURL(url);
-            });
+            GetDeepLink(option, authProvider, extraQuery)
+                .ContinueWith(url =>
+                {
+                    if (!string.IsNullOrEmpty(url))
+                        Application.OpenURL(url);
+                })
+                .Forget();
         }
 
         private static void LoadFromDeepLink(DeepLinkHandler handler)

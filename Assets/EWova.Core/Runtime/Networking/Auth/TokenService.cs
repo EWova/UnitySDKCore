@@ -79,16 +79,36 @@ namespace EWova.Auth
             return TokenSet.FromResponse(response);
         }
 
-        public async UniTask<LaunchTicketResponse> CreateLaunchTicketAsync(
+        public async UniTask<LaunchTicketResponse> CreateLaunchTicketByForwardAsync(
             string accessToken,
             string appId,
             CancellationToken ct = default)
         {
+            string body = $"{{\"appId\":\"{appId}\"}}";
             return await m_apiClient.Send<LaunchTicketResponse>(
                 AuthApiClient.RequestTask.POST(
                 backendUrlOrAbsoluteUrl: m_config.LaunchTicketEndpoint,
                 acceptType: "application/json",
-                body: AuthRequestBuilder.BuildCreateLaunchTicketJsonBody(appId),
+                body: body,
+                contentType: "application/json",
+                isAbsoluteUrl: false,
+                ct: ct),
+                postProcRequestTask: (reqTask) =>
+                {
+                    reqTask.Headers["Authorization"] = $"Bearer {accessToken}";
+                });
+        }
+
+        public async UniTask<LaunchTicketResponse> CreateLaunchTicketByReverseAsync(
+            string accessToken,
+            CancellationToken ct = default)
+        {
+            const string body = "{\"target\":\"main-app\"}";
+            return await m_apiClient.Send<LaunchTicketResponse>(
+                AuthApiClient.RequestTask.POST(
+                backendUrlOrAbsoluteUrl: m_config.LaunchTicketEndpoint,
+                acceptType: "application/json",
+                body: body,
                 contentType: "application/json",
                 isAbsoluteUrl: false,
                 ct: ct),
