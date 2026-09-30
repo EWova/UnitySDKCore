@@ -10,21 +10,15 @@ namespace EWova
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RuntimeInitializeOnLoadBefore()
         {
-            var go = new GameObject("[EWova] MainThread Dispatcher");
+            var go = new GameObject("[EWova]MainThreadDispatcher");
             DontDestroyOnLoad(go);
             _instance = go.AddComponent<UnityMainThreadDispatcher>();
 
 #if UNITY_EDITOR
-            static void PlayModeStateChanged(UnityEditor.PlayModeStateChange mode)
+            Authoring.EditorDomainReleaseHelper.CleanupOneShot += () =>
             {
-                if (mode == UnityEditor.PlayModeStateChange.EnteredEditMode)
-                {
-                    UnityEditor.EditorApplication.playModeStateChanged -= PlayModeStateChanged;
-                    _instance = null;
-                }
-            }
-            ;
-            UnityEditor.EditorApplication.playModeStateChanged += PlayModeStateChanged;
+                _instance = null;
+            };
 #endif
         }
 
@@ -33,6 +27,12 @@ namespace EWova
 
         public static void Enqueue(Action action)
         {
+            if (_instance == null)
+            {
+                Debug.LogWarning("[EWova]UnityMainThreadDispatcher.Enqueue called before initialization or after teardown; action was dropped.");
+                return;
+            }
+
             _instance._mainThreadActions.Enqueue(action);
         }
 

@@ -1,10 +1,12 @@
 {
-    "name": "EWova.Core",
-    "rootNamespace": "EWova",
+    "name": "EWova.DeepLink.Win.Editor",
+    "rootNamespace": "EWova.DeepLink.Win.Editor",
     "references": [
-        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+        "GUID:230e565317b8f864b8ce67aa85e20bf0"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
