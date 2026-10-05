@@ -12,6 +12,4 @@
   - 新增 `WindowsDeepLinkingCore.LauncherFileName`。
   - `Initialize` 新增 `allowAgentFallback` 參數（原 4 參數版本維持允許退回 VBS）。
   - 新增 `Registration` 屬性回報註冊方式（`Launcher` / `Agent` / `None`）。
-
-### Added
-- `Runtime/DeepLink/Windows/Source~/`：Core 與啟動器原始碼，以及編譯兩者的 `Build.ps1`（Unity 不會匯入此資料夾）。
+- `EWova.DeepLink.Win.Core.dll` 與 `DeepLinkLauncher.exe` 的原始碼在 [EWova/DeepLinkWin-dll](https://github.com/EWova/DeepLinkWin-dll)。
