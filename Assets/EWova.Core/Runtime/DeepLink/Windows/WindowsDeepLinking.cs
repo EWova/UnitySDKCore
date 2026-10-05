@@ -33,12 +33,19 @@ namespace EWova.DeepLink.Win
             string projectDirectory = Path.GetDirectoryName(Application.dataPath) ?? string.Empty;
             string targetExePath = Path.Combine(projectDirectory, targetProcessName);
 
+            // VBS 只在編輯器使用（Unity.exe 旁不會有啟動器）；正式 build 寫出 VBS 並註冊容易被防毒誤判
             WindowsDeepLinkingCore.Initialize(
                 uriScheme,
                 Application.productName,
                 targetExePath,
-                Application.persistentDataPath
+                Application.persistentDataPath,
+                allowAgentFallback: Application.isEditor
             );
+
+            if (WindowsDeepLinkingCore.Registration == WinDeepLinkRegistration.None)
+            {
+                Debug.LogError($"[EWova]DeepLink 找不到 {WindowsDeepLinkingCore.LauncherFileName}（應在 {targetProcessName} 旁），{uriScheme}:// 將無法開啟此程式。請發布完整的 build 資料夾。");
+            }
 
             if (Application.isEditor)
             {
