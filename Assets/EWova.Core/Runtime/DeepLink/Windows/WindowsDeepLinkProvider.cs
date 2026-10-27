@@ -7,8 +7,20 @@ namespace EWova.DeepLink.Win
     {
         public int Priority => 100;
 
-#if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN) && !(NET_STANDARD_2_0 || NET_STANDARD_2_1)
+#if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !(NET_STANDARD_2_0 || NET_STANDARD_2_1))
+#if UNITY_EDITOR
+        public bool IsSupported => WindowsDeepLinking.IsEditorSupported;
+
+        public WindowsDeepLinkProvider()
+        {
+            if (!IsSupported && Authoring.DevelopTip.IsEnabled)
+            {
+                Authoring.EditorLogger.Warn("Windows DeepLink 在編輯器需要 .NET Framework，請到 ProjectSettings/Player/OtherSettings/Configuration/Editor Assemblies Compatibility Level 切換到 .NET Framework 以啟用此功能");
+            }
+        }
+#else
         public bool IsSupported => true;
+#endif
         public event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
         private string _scheme = null;
         public bool ConfigureScheme(string scheme, out string errorMessage)
@@ -38,12 +50,6 @@ namespace EWova.DeepLink.Win
         public bool ConfigureScheme(string scheme, out string errorMessage)
         {
             errorMessage = $"Windows DeepLink 在此平台不受支援，無法配置 Scheme: {scheme}";
-#if UNITY_EDITOR_WIN && (NET_STANDARD_2_0 || NET_STANDARD_2_1)
-            if (Authoring.DevelopTip.IsEnabled)
-            {
-                Authoring.EditorLogger.Warn("Windows DeepLink 在編輯器的 .NET Standard 2.x 模式下不受支援，請到 ProjectSettings/Player/OtherSettings/Configuration/ApiCompatibilityLevel 切換到 .NET Framework 以啟用此功能");
-            }
-#endif
             return false;
         }
 #endif

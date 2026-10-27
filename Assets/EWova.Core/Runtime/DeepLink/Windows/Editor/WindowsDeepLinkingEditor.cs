@@ -10,6 +10,9 @@ namespace EWova.DeepLink.Win.Editor
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void InjectEditorOverrides()
         {
+            // 此組件只在 Editor Assemblies Compatibility Level 為 .NET Framework 時編譯，由這裡開啟編輯器的 Windows DeepLink
+            WindowsDeepLinking.IsEditorSupported = true;
+
             WindowsDeepLinking.OverrideTargetExecutablePath = () =>
             {
                 return EditorApplication.applicationPath;

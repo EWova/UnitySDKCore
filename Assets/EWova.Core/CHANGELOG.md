@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Windows 編輯器的 DeepLink 改由 Editor Assemblies Compatibility Level 決定是否支援，不再受目前 Build Target 的 Api Compatibility Level 影響。
+  - 例如 Android 使用 .NET Standard 打包時，只要 Editor Assemblies Compatibility Level 為 .NET Framework（或 Default），在 Windows 編輯器仍可跳轉登入。
+  - Windows 正式 build 仍需 Standalone 的 Api Compatibility Level 為 .NET Framework。
+
 ## [1.10.0] - 2026-10-05
 
 ### Changed
