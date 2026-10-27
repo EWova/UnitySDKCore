@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.10.1] - 2026-10-27
 
 ### Changed
 - Windows 編輯器的 DeepLink 改由 Editor Assemblies Compatibility Level 決定是否支援，不再受目前 Build Target 的 Api Compatibility Level 影響。
