@@ -6,15 +6,14 @@ namespace EWova.DeepLink.Win
 {
     public static class WindowsDeepLinking
     {
-        // Windows .Net Framework 4.6 以上版本才支援註冊表操作
-        // 編輯器內此組件使用 Active Build Target 的 Api Compatibility Level（例如 Android），與 Windows 編輯器本身無關，故一律編譯；
-        // 是否支援改由 Editor 組件（使用 Editor Assemblies Compatibility Level）設定 IsEditorSupported 決定
-#if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !(NET_STANDARD_2_0 || NET_STANDARD_2_1))
+        // EWova.DeepLink.Win.Core 為 netstandard2.0，不論 Api Compatibility Level 為 .NET Standard 或 .NET Framework 都可使用
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
 #if UNITY_EDITOR
         /// <summary>
-        /// 由 Editor 組件在 Editor Assemblies Compatibility Level 為 .NET Framework 時設為 true
+        /// 1.10.1 用來依 Editor Assemblies Compatibility Level 開關編輯器支援；1.10.2 起 Windows 編輯器一律支援，固定為 true
         /// </summary>
-        public static bool IsEditorSupported { get; set; }
+        [Obsolete("Windows 編輯器一律支援 DeepLink，不再需要設定")]
+        public static bool IsEditorSupported { get => true; set { } }
 #endif
 
         public static event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
