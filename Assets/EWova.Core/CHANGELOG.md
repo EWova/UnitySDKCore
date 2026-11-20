@@ -11,6 +11,7 @@
 - `EWova.DeepLink.Win.Core.dll` 更新為 1.3.0.0，改為 netstandard2.0（原為 .NET Framework 4.7.2），登錄檔操作改以 advapi32 P/Invoke 實作；公開 API 不變。
 - Windows DeepLink 不再需要 .NET Framework：Windows 編輯器與 Windows build 在 Api Compatibility Level 為 .NET Standard 或 .NET Framework 時都能使用，也不再受 Editor Assemblies Compatibility Level 影響。
 - `WindowsDeepLinking.IsEditorSupported` 標為 `[Obsolete]`，固定為 true。
+- 收到 DeepLink 時寫的 log 會把 `launch_ticket`、`code` 的值換成 `***`（新增 `EWovaApp.MaskSensitiveQuery(url)`）。
 
 ## [1.10.1] - 2026-10-27
 

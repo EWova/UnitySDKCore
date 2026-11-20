@@ -450,7 +450,7 @@ namespace EWova.Auth
             if (IsAuthenticated)
             {
                 if (InternalLogger.WarnEnabled)
-                    InternalLogger.Warn($"收到 URL 但當前已處於認證狀態，忽略處理。URL: {url}");
+                    InternalLogger.Warn($"收到 URL 但當前已處於認證狀態，忽略處理。URL: {EWovaApp.MaskSensitiveQuery(url)}");
                 _isProcessingDeepLink = false;
                 return;
             }
@@ -580,7 +580,7 @@ namespace EWova.Auth
 
                 // 忽略其他 URL，因為可能是其他功能的 DeepLink 回調
                 if (InternalLogger.InfoEnabled)
-                    InternalLogger.Info($"收到 URL 但無必要參數，忽略處理。URL: {url}");
+                    InternalLogger.Info($"收到 URL 但無必要參數，忽略處理。URL: {EWovaApp.MaskSensitiveQuery(url)}");
                 // HandleAuthFailure("收到的 URL 缺少必要參數 (code/state/launch_ticket)。");
             }
             catch (OperationCanceledException)

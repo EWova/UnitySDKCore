@@ -5,6 +5,7 @@ using EWova.DeepLink;
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 using UnityEngine;
@@ -28,6 +29,20 @@ namespace EWova
     public static class EWovaApp
     {
         public const string DeepLinkScheme = "ewova";
+
+        private static readonly Regex SensitiveQueryRegex = new Regex(
+            $@"([?&](?:{Regex.Escape(AuthProvider.LaunchTicketQueryKey)}|code)=)[^&#]*",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        /// <summary>
+        /// 把網址裡的登入憑證（launch_ticket、code）換成 ***，寫 log 時使用。
+        /// </summary>
+        public static string MaskSensitiveQuery(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+                return url;
+            return SensitiveQueryRegex.Replace(url, "$1***");
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
