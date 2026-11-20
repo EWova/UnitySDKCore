@@ -6,6 +6,7 @@
 - 修正 1.10.1 在 Unity 2021.3 / 2022.3 編譯失敗、找不到 `WinActivatedDeepLink` 的問題（不論 Build Target 與 Api Compatibility Level）。
   - `EWova.DeepLink.Win.Core.dll.meta` 原為 Unity 6 格式（PluginImporter serializedVersion 3），舊版 Unity 讀不到平台設定而不引用此 DLL；改回 serializedVersion 2，新舊版本都能讀取。
   - DLL 原為 .NET Framework 4.7.2，Unity 在 .NET Standard profile 下對其只有有限支援；改為 netstandard2.0，兩種 Api Compatibility Level 都完整支援。
+- 修正 Mac 編輯器的 Build Target 為 Windows 時，Windows DeepLink 被視為支援，呼叫 `Initialize` 會因找不到 advapi32 丟出 `DllNotFoundException`；現在只在 Windows 編輯器與 Windows build 啟用。
 
 ### Changed
 - `EWova.DeepLink.Win.Core.dll` 更新為 1.3.0.0，改為 netstandard2.0（原為 .NET Framework 4.7.2），登錄檔操作改以 advapi32 P/Invoke 實作；公開 API 不變。

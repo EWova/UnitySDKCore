@@ -7,7 +7,7 @@ namespace EWova.DeepLink.Win
     public static class WindowsDeepLinking
     {
         // EWova.DeepLink.Win.Core 為 netstandard2.0，不論 Api Compatibility Level 為 .NET Standard 或 .NET Framework 都可使用
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+#if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
 #if UNITY_EDITOR
         /// <summary>
         /// 1.10.1 用來依 Editor Assemblies Compatibility Level 開關編輯器支援；1.10.2 起 Windows 編輯器一律支援，固定為 true
@@ -99,6 +99,13 @@ namespace EWova.DeepLink.Win
             WindowsDeepLinkingCore.CheckRegistryForDeepLink();
         }
 #else
+#if UNITY_EDITOR
+        /// <summary>
+        /// 非 Windows 編輯器（例如 Mac 編輯器的 Build Target 為 Windows）不支援，固定為 false
+        /// </summary>
+        [Obsolete("Windows 編輯器一律支援 DeepLink，不再需要設定")]
+        public static bool IsEditorSupported { get => false; set { } }
+#endif
 
 #pragma warning disable CS0067
         public static event Action<string> OnDeepLinkActivated;

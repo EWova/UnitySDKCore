@@ -7,7 +7,7 @@ namespace EWova.DeepLink.Win
     {
         public int Priority => 100;
 
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+#if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
         public bool IsSupported => true;
         public event Action<string, DeepLinkInvocationType> OnDeepLinkActivated;
         private string _scheme = null;
